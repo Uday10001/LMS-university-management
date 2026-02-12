@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block title %}Teacher Dashboard{% endblock %}
+
+{% block sidebar %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'attendance:teacher_dashboard' %}">
+            <i class="fas fa-home"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:create_session' %}">
+            <i class="fas fa-plus-circle"></i> Create Session
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:teacher_sessions_list' %}">
+            <i class="fas fa-list"></i> My Sessions
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Teacher Dashboard</h1>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card stat-card primary">
+            <div class="card-body">
+                <h5 class="card-title">Total Sessions</h5>
+                <h2>{{ total_sessions }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card stat-card success">
+            <div class="card-body">
+                <h5 class="card-title">Attendance Marked</h5>
+                <h2>{{ marked_sessions }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Today's Sessions</h5>
+            </div>
+            <div class="card-body">
+                {% if today_sessions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Subject</th>
+                                    <th>Section</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in today_sessions %}
+                                <tr>
+                                    <td>{{ session.start_time|time:"h:i A" }} - {{ session.end_time|time:"h:i A" }}</td>
+                                    <td>{{ session.subject.code }}</td>
+                                    <td>{{ session.section.code }}</td>
+                                    <td>
+                                        {% if session.attendance_marked %}
+                                            <span class="badge bg-success">Marked</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if session.attendance_marked %}
+                                            <a href="{% url 'attendance:view_session_attendance' session.id %}" 
+                                               class="btn btn-sm btn-info">View</a>
+                                        {% else %}
+                                            <a href="{% url 'attendance:mark_attendance' session.id %}" 
+                                               class="btn btn-sm btn-primary">Mark Attendance</a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No sessions scheduled for today.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if pending_sessions %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0">Pending Attendance</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Subject</th>
+                                <th>Section</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in pending_sessions %}
+                            <tr>
+                                <td>{{ session.date }}</td>
+                                <td>{{ session.subject.code }}</td>
+                                <td>{{ session.section.code }}</td>
+                                <td>
+                                    <a href="{% url 'attendance:mark_attendance' session.id %}" 
+                                       class="btn btn-sm btn-primary">Mark Now</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

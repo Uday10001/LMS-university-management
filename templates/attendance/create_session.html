@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Session{% endblock %}
+
+{% block sidebar %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:teacher_dashboard' %}">
+            <i class="fas fa-home"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'attendance:create_session' %}">
+            <i class="fas fa-plus-circle"></i> Create Session
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:teacher_sessions_list' %}">
+            <i class="fas fa-list"></i> My Sessions
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-plus-circle"></i> Create New Class Session</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {% csrf_token %}
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.subject.id_for_label }}" class="form-label">
+                                <i class="fas fa-book"></i> Subject *
+                            </label>
+                            {{ form.subject }}
+                            {% if form.subject.errors %}
+                                <div class="text-danger">{{ form.subject.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="{{ form.section.id_for_label }}" class="form-label">
+                                <i class="fas fa-users"></i> Section *
+                            </label>
+                            {{ form.section }}
+                            {% if form.section.errors %}
+                                <div class="text-danger">{{ form.section.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="{{ form.date.id_for_label }}" class="form-label">
+                                <i class="fas fa-calendar"></i> Date *
+                            </label>
+                            {{ form.date }}
+                            {% if form.date.errors %}
+                                <div class="text-danger">{{ form.date.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.start_time.id_for_label }}" class="form-label">
+                                <i class="fas fa-clock"></i> Start Time *
+                            </label>
+                            {{ form.start_time }}
+                            {% if form.start_time.errors %}
+                                <div class="text-danger">{{ form.start_time.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="{{ form.end_time.id_for_label }}" class="form-label">
+                                <i class="fas fa-clock"></i> End Time *
+                            </label>
+                            {{ form.end_time }}
+                            {% if form.end_time.errors %}
+                                <div class="text-danger">{{ form.end_time.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.topic.id_for_label }}" class="form-label">
+                            <i class="fas fa-lightbulb"></i> Topic (Optional)
+                        </label>
+                        {{ form.topic }}
+                        {% if form.topic.errors %}
+                            <div class="text-danger">{{ form.topic.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'attendance:teacher_dashboard' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-arrow-right"></i> Create & Mark Attendance
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

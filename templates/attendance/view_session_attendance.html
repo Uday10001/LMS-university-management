@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block title %}View Attendance{% endblock %}
+
+{% block sidebar %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:teacher_dashboard' %}">
+            <i class="fas fa-home"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:create_session' %}">
+            <i class="fas fa-plus-circle"></i> Create Session
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="#">
+            <i class="fas fa-eye"></i> View Attendance
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:teacher_sessions_list' %}">
+            <i class="fas fa-list"></i> My Sessions
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-eye"></i> View Attendance</h1>
+    <a href="{% url 'attendance:teacher_dashboard' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Back to Dashboard
+    </a>
+</div>
+
+<!-- Session Info Card -->
+<div class="card mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <h6><i class="fas fa-book"></i> Subject</h6>
+                <h4>{{ session.subject.code }}</h4>
+                <p class="mb-0">{{ session.subject.name }}</p>
+            </div>
+            <div class="col-md-3">
+                <h6><i class="fas fa-users"></i> Section</h6>
+                <h4>{{ session.section.code }}</h4>
+                <p class="mb-0">{{ session.section.name }}</p>
+            </div>
+            <div class="col-md-3">
+                <h6><i class="fas fa-calendar"></i> Date</h6>
+                <h4>{{ session.date|date:"M d, Y" }}</h4>
+            </div>
+            <div class="col-md-3">
+                <h6><i class="fas fa-clock"></i> Time</h6>
+                <h4>{{ session.start_time|time:"h:i A" }}</h4>
+                <p class="mb-0">to {{ session.end_time|time:"h:i A" }}</p>
+            </div>
+        </div>
+        {% if session.topic %}
+            <hr style="border-color: rgba(255,255,255,0.3);">
+            <p class="mb-0"><i class="fas fa-lightbulb"></i> <strong>Topic:</strong> {{ session.topic }}</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center" style="border-left: 4px solid #198754;">
+            <div class="card-body">
+                <h6 class="text-muted">Present</h6>
+                <h2 class="text-success">{{ present_count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="border-left: 4px solid #dc3545;">
+            <div class="card-body">
+                <h6 class="text-muted">Absent</h6>
+                <h2 class="text-danger">{{ absent_count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="border-left: 4px solid #0d6efd;">
+            <div class="card-body">
+                <h6 class="text-muted">Total Students</h6>
+                <h2 class="text-primary">{{ total_students }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="border-left: 4px solid {% if attendance_percentage >= 75 %}#198754{% elif attendance_percentage >= 50 %}#ffc107{% else %}#dc3545{% endif %};">
+            <div class="card-body">
+                <h6 class="text-muted">Attendance %</h6>
+                <h2 class="{% if attendance_percentage >= 75 %}text-success{% elif attendance_percentage >= 50 %}text-warning{% else %}text-danger{% endif %}">
+                    {{ attendance_percentage }}%
+                </h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Records Table -->
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-list"></i> Attendance Records</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Roll Number</th>
+                        <th>Student Name</th>
+                        <th>Status</th>
+                        <th>Remarks</th>
+                        <th>Marked At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in attendance_records %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td><strong>{{ record.student.roll_number }}</strong></td>
+                        <td>{{ record.student.user.get_full_name }}</td>
+                        <td>
+                            {% if record.is_present %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check-circle"></i> Present
+                                </span>
+                            {% else %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-times-circle"></i> Absent
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if record.remarks %}
+                                <span class="text-muted">{{ record.remarks }}</span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ record.marked_at|date:"M d, Y h:i A" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

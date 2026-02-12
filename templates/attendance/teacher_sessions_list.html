@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block title %}My Sessions{% endblock %}
+
+{% block sidebar %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:teacher_dashboard' %}">
+            <i class="fas fa-home"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:create_session' %}">
+            <i class="fas fa-plus-circle"></i> Create Session
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'attendance:teacher_sessions_list' %}">
+            <i class="fas fa-list"></i> My Sessions
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4"><i class="fas fa-list"></i> My Sessions</h1>
+
+<!-- Filters Card -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-filter"></i> Filters</h5>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label for="{{ filter_form.subject.id_for_label }}" class="form-label">Subject</label>
+                {{ filter_form.subject }}
+            </div>
+            <div class="col-md-3">
+                <label for="{{ filter_form.section.id_for_label }}" class="form-label">Section</label>
+                {{ filter_form.section }}
+            </div>
+            <div class="col-md-2">
+                <label for="{{ filter_form.date_from.id_for_label }}" class="form-label">From Date</label>
+                {{ filter_form.date_from }}
+            </div>
+            <div class="col-md-2">
+                <label for="{{ filter_form.date_to.id_for_label }}" class="form-label">To Date</label>
+                {{ filter_form.date_to }}
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-search"></i> Filter
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Sessions Table -->
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Sessions ({{ sessions.count }})</h5>
+    </div>
+    <div class="card-body">
+        {% if sessions %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Subject</th>
+                            <th>Section</th>
+                            <th>Topic</th>
+                            <th>Status</th>
+                            <th>Attendance</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for session in sessions %}
+                        <tr>
+                            <td><strong>{{ session.date|date:"M d, Y" }}</strong></td>
+                            <td>{{ session.start_time|time:"h:i A" }}</td>
+                            <td>{{ session.subject.code }}</td>
+                            <td>{{ session.section.code }}</td>
+                            <td>
+                                {% if session.topic %}
+                                    {{ session.topic|truncatewords:5 }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if session.attendance_marked %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check"></i> Marked
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-clock"></i> Pending
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if session.attendance_marked %}
+                                    <span class="badge {% if session.get_attendance_percentage >= 75 %}bg-success{% elif session.get_attendance_percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                                        {{ session.get_present_count }}/{{ session.get_total_students }} 
+                                        ({{ session.get_attendance_percentage }}%)
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if session.attendance_marked %}
+                                    <a href="{% url 'attendance:view_session_attendance' session.id %}" 
+                                       class="btn btn-sm btn-info">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'attendance:mark_attendance' session.id %}" 
+                                       class="btn btn-sm btn-primary">
+                                        <i class="fas fa-check-square"></i> Mark
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
+                <p class="text-muted">No sessions found. Create a new session to get started!</p>
+                <a href="{% url 'attendance:create_session' %}" class="btn btn-primary">
+                    <i class="fas fa-plus-circle"></i> Create Session
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+```
+
+---
+
+## ✅ **Key Features of the Marking Page**
+
+### **1. User-Friendly Interface**
+✅ Beautiful gradient header with session info  
+✅ Search functionality to find students quickly  
+✅ Real-time counters for present/absent  
+✅ Visual status indicators (green/red badges)  
+
+### **2. Quick Actions**
+✅ **Mark All Present** - One-click to check all  
+✅ **Mark All Absent** - One-click to uncheck all  
+✅ **Toggle All** - Flip all checkboxes  
+✅ Sticky sidebar that stays visible while scrolling  
+
+### **3. Smart Features**
+✅ Click on student name/roll to toggle checkbox  
+✅ Live search (no page reload)  
+✅ Real-time counter updates  
+✅ Optional remarks per student  
+✅ Confirmation dialog before submission  
+
+### **4. Responsive Design**
+✅ Works on mobile, tablet, and desktop  
+✅ Scrollable student list with sticky header  
+✅ Bootstrap 5 components  
+
+---
+
+## 🧪 **Test the Marking Page**
+
+### **1. Login as a teacher**
+```
+Email: amit.verma@university.edu
+Password: password123

@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Dashboard{% endblock %}
+
+{% block sidebar %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'attendance:student_dashboard' %}">
+            <i class="fas fa-home"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:student_attendance_detail' %}">
+            <i class="fas fa-list"></i> Attendance Details
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Student Dashboard</h1>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card stat-card {% if overall_percentage >= 75 %}success{% elif overall_percentage >= 50 %}warning{% else %}danger{% endif %}">
+            <div class="card-body text-center">
+                <h5 class="card-title">Overall Attendance</h5>
+                <h1 class="display-3">{{ overall_percentage }}%</h1>
+                <p class="text-muted">{{ student.roll_number }} - {{ student.section.code }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Subject-wise Attendance</h5>
+            </div>
+            <div class="card-body">
+                {% if subjects_attendance %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>Present</th>
+                                    <th>Absent</th>
+                                    <th>Total</th>
+                                    <th>Percentage</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in subjects_attendance %}
+                                <tr>
+                                    <td><strong>{{ item.subject.code }}</strong><br>
+                                        <small class="text-muted">{{ item.subject.name }}</small>
+                                    </td>
+                                    <td><span class="badge bg-success">{{ item.present }}</span></td>
+                                    <td><span class="badge bg-danger">{{ item.absent }}</span></td>
+                                    <td>{{ item.total }}</td>
+                                    <td>
+                                        <span class="badge {% if item.percentage >= 75 %}bg-success{% elif item.percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                                            {{ item.percentage }}%
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No attendance records yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

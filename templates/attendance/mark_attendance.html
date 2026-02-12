@@ -1,0 +1,351 @@
+{% extends 'base.html' %}
+
+{% block title %}Mark Attendance{% endblock %}
+
+{% block extra_css %}
+<style>
+    .student-row {
+        padding: 12px;
+        border-bottom: 1px solid #dee2e6;
+        transition: background-color 0.2s;
+    }
+    .student-row:hover {
+        background-color: #f8f9fa;
+    }
+    .student-checkbox {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+    .student-info {
+        display: flex;
+        align-items: center;
+    }
+    .roll-number {
+        font-weight: bold;
+        color: #0d6efd;
+        min-width: 120px;
+    }
+    .student-name {
+        color: #495057;
+    }
+    .present-label {
+        color: #198754;
+        font-weight: 600;
+    }
+    .absent-label {
+        color: #dc3545;
+        font-weight: 600;
+    }
+    .quick-actions {
+        position: sticky;
+        top: 70px;
+        z-index: 100;
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .session-info-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .counter {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+    .search-box {
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block sidebar %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:teacher_dashboard' %}">
+            <i class="fas fa-home"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:create_session' %}">
+            <i class="fas fa-plus-circle"></i> Create Session
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="#">
+            <i class="fas fa-check-square"></i> Mark Attendance
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:teacher_sessions_list' %}">
+            <i class="fas fa-list"></i> My Sessions
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4"><i class="fas fa-check-square"></i> Mark Attendance</h1>
+
+<!-- Session Info Card -->
+<div class="session-info-card">
+    <div class="row">
+        <div class="col-md-3">
+            <h6><i class="fas fa-book"></i> Subject</h6>
+            <h4>{{ session.subject.code }}</h4>
+            <p class="mb-0">{{ session.subject.name }}</p>
+        </div>
+        <div class="col-md-3">
+            <h6><i class="fas fa-users"></i> Section</h6>
+            <h4>{{ session.section.code }}</h4>
+            <p class="mb-0">{{ session.section.name }}</p>
+        </div>
+        <div class="col-md-3">
+            <h6><i class="fas fa-calendar"></i> Date</h6>
+            <h4>{{ session.date|date:"M d, Y" }}</h4>
+        </div>
+        <div class="col-md-3">
+            <h6><i class="fas fa-clock"></i> Time</h6>
+            <h4>{{ session.start_time|time:"h:i A" }}</h4>
+            <p class="mb-0">to {{ session.end_time|time:"h:i A" }}</p>
+        </div>
+    </div>
+    {% if session.topic %}
+        <hr style="border-color: rgba(255,255,255,0.3);">
+        <p class="mb-0"><i class="fas fa-lightbulb"></i> <strong>Topic:</strong> {{ session.topic }}</p>
+    {% endif %}
+</div>
+
+<form method="POST" id="attendanceForm">
+    {% csrf_token %}
+    
+    <div class="row">
+        <!-- Student List (Left Side) -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users"></i> Students ({{ total_students }})
+                    </h5>
+                    <div>
+                        <span class="badge bg-success">
+                            <span id="presentCount">{{ total_students }}</span> Present
+                        </span>
+                        <span class="badge bg-danger">
+                            <span id="absentCount">0</span> Absent
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <!-- Search Box -->
+                    <div class="search-box p-3 border-bottom">
+                        <input type="text" id="searchStudent" class="form-control" 
+                               placeholder="🔍 Search by roll number or name...">
+                    </div>
+                    
+                    <!-- Student List -->
+                    <div id="studentList" style="max-height: 600px; overflow-y: auto;">
+                        {% for student in students %}
+                        <div class="student-row" data-roll="{{ student.roll_number }}" 
+                             data-name="{{ student.user.get_full_name|lower }}">
+                            <div class="row align-items-center">
+                                <div class="col-md-1 text-center">
+                                    <input type="checkbox" 
+                                           name="student_{{ student.id }}" 
+                                           class="student-checkbox form-check-input" 
+                                           checked
+                                           id="student_{{ student.id }}">
+                                </div>
+                                <div class="col-md-5">
+                                    <label for="student_{{ student.id }}" class="student-info mb-0" 
+                                           style="cursor: pointer;">
+                                        <span class="roll-number">{{ student.roll_number }}</span>
+                                        <span class="student-name">{{ student.user.get_full_name }}</span>
+                                    </label>
+                                </div>
+                                <div class="col-md-2 text-center">
+                                    <span class="status-badge present-label">
+                                        <i class="fas fa-check-circle"></i> Present
+                                    </span>
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="text" 
+                                           name="remarks_{{ student.id }}" 
+                                           class="form-control form-control-sm" 
+                                           placeholder="Remarks (optional)">
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Actions (Right Side - Sticky) -->
+        <div class="col-md-4">
+            <div class="quick-actions">
+                <h5 class="mb-3"><i class="fas fa-bolt"></i> Quick Actions</h5>
+                
+                <div class="d-grid gap-2 mb-3">
+                    <button type="button" class="btn btn-success" id="selectAll">
+                        <i class="fas fa-check-double"></i> Mark All Present
+                    </button>
+                    <button type="button" class="btn btn-warning" id="deselectAll">
+                        <i class="fas fa-times-circle"></i> Mark All Absent
+                    </button>
+                    <button type="button" class="btn btn-info" id="toggleAll">
+                        <i class="fas fa-exchange-alt"></i> Toggle All
+                    </button>
+                </div>
+                
+                <hr>
+                
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Present</h6>
+                        <div class="counter text-success" id="presentCounter">{{ total_students }}</div>
+                        <hr>
+                        <h6 class="text-muted">Absent</h6>
+                        <div class="counter text-danger" id="absentCounter">0</div>
+                        <hr>
+                        <h6 class="text-muted">Total</h6>
+                        <div class="counter text-primary">{{ total_students }}</div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save"></i> Submit Attendance
+                    </button>
+                    <a href="{% url 'attendance:teacher_dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.student-checkbox');
+    const presentCountElement = document.getElementById('presentCount');
+    const absentCountElement = document.getElementById('absentCount');
+    const presentCounterElement = document.getElementById('presentCounter');
+    const absentCounterElement = document.getElementById('absentCounter');
+    const searchInput = document.getElementById('searchStudent');
+    const studentRows = document.querySelectorAll('.student-row');
+    
+    // Update counters
+    function updateCounters() {
+        let presentCount = 0;
+        let absentCount = 0;
+        
+        checkboxes.forEach(checkbox => {
+            if (checkbox.checked) {
+                presentCount++;
+            } else {
+                absentCount++;
+            }
+        });
+        
+        presentCountElement.textContent = presentCount;
+        absentCountElement.textContent = absentCount;
+        presentCounterElement.textContent = presentCount;
+        absentCounterElement.textContent = absentCount;
+    }
+    
+    // Update individual checkbox status
+    function updateCheckboxStatus(checkbox) {
+        const row = checkbox.closest('.student-row');
+        const statusBadge = row.querySelector('.status-badge');
+        
+        if (checkbox.checked) {
+            statusBadge.innerHTML = '<i class="fas fa-check-circle"></i> Present';
+            statusBadge.className = 'status-badge present-label';
+        } else {
+            statusBadge.innerHTML = '<i class="fas fa-times-circle"></i> Absent';
+            statusBadge.className = 'status-badge absent-label';
+        }
+    }
+    
+    // Add change event to all checkboxes
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            updateCheckboxStatus(this);
+            updateCounters();
+        });
+    });
+    
+    // Select All
+    document.getElementById('selectAll').addEventListener('click', function() {
+        checkboxes.forEach(checkbox => {
+            if (!checkbox.checked) {
+                checkbox.checked = true;
+                updateCheckboxStatus(checkbox);
+            }
+        });
+        updateCounters();
+    });
+    
+    // Deselect All
+    document.getElementById('deselectAll').addEventListener('click', function() {
+        checkboxes.forEach(checkbox => {
+            if (checkbox.checked) {
+                checkbox.checked = false;
+                updateCheckboxStatus(checkbox);
+            }
+        });
+        updateCounters();
+    });
+    
+    // Toggle All
+    document.getElementById('toggleAll').addEventListener('click', function() {
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = !checkbox.checked;
+            updateCheckboxStatus(checkbox);
+        });
+        updateCounters();
+    });
+    
+    // Search functionality
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        studentRows.forEach(row => {
+            const rollNumber = row.dataset.roll.toLowerCase();
+            const name = row.dataset.name;
+            
+            if (rollNumber.includes(searchTerm) || name.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+    
+    // Form submission confirmation
+    document.getElementById('attendanceForm').addEventListener('submit', function(e) {
+        const presentCount = document.querySelectorAll('.student-checkbox:checked').length;
+        const totalCount = checkboxes.length;
+        const absentCount = totalCount - presentCount;
+        
+        const message = `Are you sure you want to submit attendance?\n\nPresent: ${presentCount}\nAbsent: ${absentCount}\nTotal: ${totalCount}`;
+        
+        if (!confirm(message)) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}
