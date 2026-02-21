@@ -83,3 +83,40 @@ class SubjectAdmin(admin.ModelAdmin):
             count
         )
     get_teachers_count.short_description = 'Teachers'
+
+from .models import Section, Subject, TimetableSlot
+
+
+@admin.register(TimetableSlot)
+class TimetableSlotAdmin(admin.ModelAdmin):
+    list_display  = [
+        'get_day', 'get_time_range', 'section',
+        'subject', 'teacher', 'room', 'is_active'
+    ]
+    list_filter   = ['day_of_week', 'section', 'subject', 'is_active']
+    search_fields = [
+        'section__code', 'subject__code',
+        'teacher__user__first_name', 'room'
+    ]
+    ordering      = ['day_of_week', 'start_time']
+
+    fieldsets = (
+        ('Schedule', {
+            'fields': ('day_of_week', 'start_time', 'end_time', 'room')
+        }),
+        ('Assignment', {
+            'fields': ('section', 'subject', 'teacher')
+        }),
+        ('Validity', {
+            'fields': ('effective_from', 'effective_to', 'is_active')
+        }),
+    )
+
+    def get_day(self, obj):
+        return obj.get_day_of_week_display()
+    get_day.short_description = 'Day'
+    get_day.admin_order_field = 'day_of_week'
+
+    def get_time_range(self, obj):
+        return f"{obj.start_time:%H:%M} – {obj.end_time:%H:%M}"
+    get_time_range.short_description = 'Time'

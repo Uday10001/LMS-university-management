@@ -1,0 +1,346 @@
+{% extends 'base.html' %}
+{% load attendance_extras %}
+{% block title %}Teacher Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+    * { font-family: 'Outfit', sans-serif; }
+    :root {
+        --bg:#f4f6fb; --surface:#fff; --border:#e8edf5;
+        --text:#0f1628; --muted:#7a869a; --accent:#4f46e5;
+        --good:#059669; --warn:#d97706; --bad:#dc2626;
+        --radius:12px; --shadow:0 2px 12px rgba(0,0,0,0.07);
+    }
+    body { background:var(--bg); }
+
+    /* Header */
+    .dash-header {
+        background: var(--text); color: white;
+        border-radius: var(--radius); padding: 22px 28px;
+        margin-bottom: 22px; display: flex;
+        align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 14px;
+    }
+    .dash-header h1 { font-size:1.5rem; font-weight:800; margin:0; }
+    .dash-header p  { color:rgba(255,255,255,0.5); margin:4px 0 0; font-size:0.85rem; }
+
+    /* Alert bar */
+    .pending-alert {
+        background:#fff7ed; border:1px solid #fed7aa;
+        border-radius:var(--radius); padding:14px 20px;
+        display:flex; align-items:center; gap:12px;
+        margin-bottom:20px; color:#c2410c;
+        font-weight:600; font-size:0.88rem;
+    }
+    .pending-alert i { font-size:1.2rem; }
+
+    /* Stat tiles */
+    .stats-row {
+        display:grid; grid-template-columns:repeat(4,1fr);
+        gap:14px; margin-bottom:22px;
+    }
+    .stat-tile {
+        background:var(--surface); border-radius:var(--radius);
+        padding:18px 20px; border:1px solid var(--border);
+        box-shadow:var(--shadow); position:relative; overflow:hidden;
+        transition:transform 0.2s;
+    }
+    .stat-tile:hover { transform:translateY(-3px); }
+    .stat-tile-label {
+        font-size:0.68rem; font-weight:700;
+        text-transform:uppercase; letter-spacing:1px;
+        color:var(--muted); margin-bottom:8px;
+    }
+    .stat-tile-value {
+        font-size:2rem; font-weight:800;
+        font-family:'JetBrains Mono',monospace; line-height:1;
+    }
+    .tile-bar {
+        position:absolute; bottom:0; left:0; right:0;
+        height:3px; border-radius:0 0 var(--radius) var(--radius);
+    }
+
+    /* Section panels */
+    .panel {
+        background:var(--surface); border-radius:var(--radius);
+        border:1px solid var(--border); box-shadow:var(--shadow);
+        margin-bottom:22px; overflow:hidden;
+    }
+    .panel-head {
+        padding:14px 20px; border-bottom:1px solid var(--border);
+        display:flex; align-items:center;
+        justify-content:space-between; flex-wrap:wrap; gap:8px;
+    }
+    .panel-title {
+        font-size:0.75rem; font-weight:700;
+        text-transform:uppercase; letter-spacing:1px; color:var(--muted);
+    }
+
+    /* Session rows */
+    .session-row {
+        padding:14px 20px; border-bottom:1px solid var(--border);
+        display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+        transition:background 0.15s;
+    }
+    .session-row:last-child { border-bottom:none; }
+    .session-row:hover { background:#f8faff; }
+
+    .session-date-block {
+        width:48px; height:48px; border-radius:10px;
+        background:var(--bg); display:flex; flex-direction:column;
+        align-items:center; justify-content:center; flex-shrink:0;
+        font-family:'JetBrains Mono',monospace;
+    }
+    .session-date-block.today { background:var(--accent); color:white; }
+    .session-date-block.overdue { background:#fef2f2; color:var(--bad); }
+
+    .sdb-day { font-size:1.1rem; font-weight:700; line-height:1; }
+    .sdb-mon { font-size:0.6rem; font-weight:600;
+               text-transform:uppercase; opacity:0.7; }
+
+    .session-info { flex:1; min-width:0; }
+    .si-subject   { font-weight:700; font-size:0.92rem; color:var(--text); }
+    .si-meta      { font-size:0.75rem; color:var(--muted); margin-top:3px; }
+
+    .session-time {
+        font-family:'JetBrains Mono',monospace;
+        font-size:0.75rem; color:var(--muted); white-space:nowrap;
+    }
+
+    .mark-btn {
+        padding:7px 16px; border-radius:8px;
+        background:var(--accent); color:white;
+        font-size:0.8rem; font-weight:700;
+        text-decoration:none; white-space:nowrap;
+        transition:opacity 0.2s;
+    }
+    .mark-btn:hover  { opacity:0.85; color:white; }
+    .mark-btn.overdue-btn { background:var(--bad); }
+
+    .view-btn {
+        padding:7px 16px; border-radius:8px;
+        background:#d1fae5; color:var(--good);
+        font-size:0.8rem; font-weight:700;
+        text-decoration:none; white-space:nowrap;
+    }
+
+    .empty-state {
+        text-align:center; padding:40px 20px;
+        color:var(--muted); font-size:0.85rem;
+    }
+    .empty-state i {
+        font-size:2.5rem; display:block;
+        margin-bottom:10px; opacity:0.2;
+    }
+
+    @media (max-width:768px) {
+        .stats-row { grid-template-columns:repeat(2,1fr); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="dash-header">
+    <div>
+        <h1>
+            <i class="fas fa-chalkboard-teacher me-2" style="color:#818cf8;"></i>
+            Teacher Dashboard
+        </h1>
+        <p>
+            {{ teacher.user.get_full_name }} &bull;
+            {{ teacher.employee_id }} &bull;
+            {{ today|date:"l, M d Y" }}
+        </p>
+    </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a href="{% url 'attendance:teacher_timetable' %}"
+           style="padding:9px 18px; border-radius:10px; background:rgba(255,255,255,0.1);
+                  color:white; font-weight:600; font-size:0.82rem; text-decoration:none;
+                  border:1px solid rgba(255,255,255,0.2);">
+            <i class="fas fa-table me-1"></i>My Timetable
+        </a>
+        <a href="{% url 'attendance:request_timetable_change' %}"
+           style="padding:9px 18px; border-radius:10px; background:rgba(255,255,255,0.1);
+                  color:white; font-weight:600; font-size:0.82rem; text-decoration:none;
+                  border:1px solid rgba(255,255,255,0.2);">
+            <i class="fas fa-paper-plane me-1"></i>Request Change
+        </a>
+    </div>
+</div>
+
+<!-- Pending alert -->
+{% if pending_count > 0 %}
+<div class="pending-alert">
+    <i class="fas fa-exclamation-triangle"></i>
+    <span>
+        You have <strong>{{ pending_count }} session{{ pending_count|pluralize }}</strong>
+        with attendance not yet marked — including past sessions you may have missed.
+    </span>
+</div>
+{% endif %}
+
+{% if pending_requests > 0 %}
+<div class="pending-alert" style="background:#eff6ff; border-color:#bfdbfe; color:#1d4ed8;">
+    <i class="fas fa-bell"></i>
+    <span>
+        <strong>{{ pending_requests }} change request{{ pending_requests|pluralize }}</strong>
+        awaiting management review.
+    </span>
+</div>
+{% endif %}
+
+<!-- Stat Tiles -->
+<div class="stats-row">
+    <div class="stat-tile">
+        <div class="stat-tile-label">Total Sessions</div>
+        <div class="stat-tile-value">{{ total_sessions }}</div>
+        <div class="tile-bar" style="background:var(--accent);"></div>
+    </div>
+    <div class="stat-tile">
+        <div class="stat-tile-label">Marked</div>
+        <div class="stat-tile-value" style="color:var(--good);">
+            {{ marked_sessions }}
+        </div>
+        <div class="tile-bar" style="background:var(--good);"></div>
+    </div>
+    <div class="stat-tile">
+        <div class="stat-tile-label">Pending</div>
+        <div class="stat-tile-value"
+             style="color:{% if pending_count > 0 %}var(--bad){% else %}var(--good){% endif %};">
+            {{ pending_count }}
+        </div>
+        <div class="tile-bar"
+             style="background:{% if pending_count > 0 %}var(--bad){% else %}var(--good){% endif %};"></div>
+    </div>
+    <div class="stat-tile">
+        <div class="stat-tile-label">Today</div>
+        <div class="stat-tile-value">{{ today_sessions|length }}</div>
+        <div class="tile-bar" style="background:var(--warn);"></div>
+    </div>
+</div>
+
+<!-- Pending Sessions — ALL past unmarked + today's -->
+<div class="panel">
+    <div class="panel-head">
+        <span class="panel-title">
+            <i class="fas fa-clock me-2"></i>
+            Unmarked Sessions ({{ pending_count }})
+        </span>
+        <a href="{% url 'attendance:teacher_sessions_list' %}"
+           style="font-size:0.78rem; color:var(--accent);
+                  text-decoration:none; font-weight:600;">
+            View All Sessions →
+        </a>
+    </div>
+
+    {% if pending_sessions %}
+        {% for session in pending_sessions %}
+        {% with is_today=session.date|date:"Y-m-d" == today|date:"Y-m-d" %}
+        <div class="session-row">
+            <div class="session-date-block
+                {% if is_today %}today
+                {% elif session.date < today %}overdue{% endif %}">
+                <div class="sdb-day">{{ session.date|date:"d" }}</div>
+                <div class="sdb-mon">{{ session.date|date:"M" }}</div>
+            </div>
+            <div class="session-info">
+                <div class="si-subject">
+                    {{ session.subject.code }} — {{ session.subject.name }}
+                </div>
+                <div class="si-meta">
+                    <i class="fas fa-users me-1"></i>{{ session.section.code }}
+                    {% if session.room %}
+                        &bull; <i class="fas fa-door-open me-1"></i>{{ session.room }}
+                    {% endif %}
+                    {% if not is_today %}
+                        &bull; <span style="color:var(--bad); font-weight:600;">
+                            {{ session.date|date:"l" }}
+                            ({{ today|date:"Y-m-d"|timeuntil:session.date }} ago)
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="session-time">
+                {{ session.start_time|time:"h:i A" }}
+            </div>
+            <a href="{% url 'attendance:mark_attendance' session.id %}"
+               class="mark-btn {% if not is_today %}overdue-btn{% endif %}">
+                <i class="fas fa-check-square me-1"></i>
+                {% if is_today %}Mark{% else %}Mark Late{% endif %}
+            </a>
+        </div>
+        {% endwith %}
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-check-circle" style="color:var(--good);opacity:0.5;"></i>
+            All sessions marked — you're up to date!
+        </div>
+    {% endif %}
+</div>
+
+<!-- Today's sessions (separate quick-view) -->
+{% if today_sessions %}
+<div class="panel">
+    <div class="panel-head">
+        <span class="panel-title">
+            <i class="fas fa-sun me-2"></i>Today's Schedule
+        </span>
+    </div>
+    {% for session in today_sessions %}
+    <div class="session-row">
+        <div class="session-date-block today">
+            <div class="sdb-day">{{ session.start_time|time:"g" }}</div>
+            <div class="sdb-mon">{{ session.start_time|time:"A" }}</div>
+        </div>
+        <div class="session-info">
+            <div class="si-subject">
+                {{ session.subject.code }} — {{ session.subject.name }}
+            </div>
+            <div class="si-meta">
+                <i class="fas fa-users me-1"></i>{{ session.section.code }}
+                {% if session.room %}
+                    &bull; <i class="fas fa-door-open me-1"></i>{{ session.room }}
+                {% endif %}
+            </div>
+        </div>
+        <div class="session-time">
+            {{ session.start_time|time:"h:i A" }} –
+            {{ session.end_time|time:"h:i A" }}
+        </div>
+        {% if session.attendance_marked %}
+            <a href="{% url 'attendance:view_session_attendance' session.id %}"
+               class="view-btn">
+                <i class="fas fa-check-circle me-1"></i>View
+            </a>
+        {% else %}
+            <a href="{% url 'attendance:mark_attendance' session.id %}"
+               class="mark-btn">
+                <i class="fas fa-check-square me-1"></i>Mark
+            </a>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.session-row, .stat-tile').forEach((el, i) => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(6px)';
+        el.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+        setTimeout(() => {
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+        }, 35 * i);
+    });
+});
+</script>
+{% endblock %}

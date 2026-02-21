@@ -1,0 +1,682 @@
+{% extends 'base.html' %}
+
+{% block title %}My Schedule{% endblock %}
+
+{% block extra_css %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap');
+
+    * { font-family: 'DM Sans', sans-serif; }
+
+    :root {
+        --bg:             #f0f2f7;
+        --surface:        #ffffff;
+        --border:         #e4e8f0;
+        --text:           #1a1f36;
+        --muted:          #8492a6;
+        --accent:         #4f46e5;
+        --present:        #059669;
+        --absent:         #dc2626;
+        --pending:        #d97706;
+        --future:         #7c3aed;
+        --shadow-sm:      0 1px 4px rgba(0,0,0,0.06);
+        --shadow-md:      0 4px 16px rgba(0,0,0,0.10);
+        --radius:         14px;
+        --radius-sm:      8px;
+    }
+
+    body { background: var(--bg); }
+
+    /* ── Header ─────────────────────────── */
+    .schedule-header {
+        background: var(--surface);
+        border-radius: var(--radius);
+        padding: 24px 28px;
+        margin-bottom: 22px;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .schedule-title {
+        font-size: 1.55rem;
+        font-weight: 700;
+        color: var(--text);
+        margin: 0;
+    }
+
+    .week-label {
+        font-size: 0.88rem;
+        color: var(--muted);
+        margin-top: 4px;
+    }
+
+    .week-nav { display: flex; align-items: center; gap: 10px; }
+
+    .nav-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+
+    .nav-btn:hover {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .today-btn {
+        padding: 8px 18px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .today-btn:hover {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+    }
+
+    /* ── Legend ─────────────────────────── */
+    .legend-row {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        align-items: center;
+        padding: 12px 20px;
+        background: var(--surface);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        margin-bottom: 22px;
+        font-size: 0.8rem;
+        color: var(--muted);
+        font-weight: 500;
+    }
+
+    .legend-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+    }
+
+    /* ── Week Grid ──────────────────────── */
+    .week-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 14px;
+        margin-bottom: 22px;
+    }
+
+    .day-column {
+        background: var(--surface);
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border);
+        transition: box-shadow 0.2s;
+        min-height: 300px;
+    }
+
+    .day-column.today {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(79,70,229,0.15), var(--shadow-md);
+    }
+
+    .day-column.past { opacity: 0.82; }
+
+    .day-header {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .day-column.today .day-header {
+        background: var(--accent);
+        color: white;
+        border-bottom-color: transparent;
+    }
+
+    .day-name {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--muted);
+    }
+
+    .day-column.today .day-name { color: rgba(255,255,255,0.8); }
+
+    .day-number {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--text);
+        line-height: 1;
+    }
+
+    .day-column.today .day-number { color: white; }
+
+    .day-month {
+        font-size: 0.7rem;
+        color: var(--muted);
+        margin-top: 1px;
+    }
+
+    .day-column.today .day-month { color: rgba(255,255,255,0.75); }
+
+    .session-count-badge {
+        font-size: 0.68rem;
+        font-weight: 700;
+        background: var(--border);
+        color: var(--muted);
+        padding: 3px 8px;
+        border-radius: 20px;
+    }
+
+    .day-column.today .session-count-badge {
+        background: rgba(255,255,255,0.25);
+        color: white;
+    }
+
+    /* ── Session Cards ──────────────────── */
+    .day-sessions {
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .session-card {
+        border-radius: var(--radius-sm);
+        padding: 11px 13px;
+        border-left: 3px solid;
+        transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .session-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    /* Status colour variants — set via class in template */
+    .sc-present {
+        border-left-color: var(--present);
+        background: #f0fdf4;
+    }
+    .sc-absent {
+        border-left-color: var(--absent);
+        background: #fff5f5;
+    }
+    .sc-pending {
+        border-left-color: var(--pending);
+        background: #fffbeb;
+    }
+    .sc-future {
+        border-left-color: #a78bfa;
+        background: #f5f3ff;
+    }
+
+    .session-time {
+        font-size: 0.68rem;
+        font-weight: 600;
+        color: var(--muted);
+        font-family: 'DM Mono', monospace;
+        margin-bottom: 4px;
+    }
+
+    .session-subject-code {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--accent);
+        margin-bottom: 2px;
+    }
+
+    .session-subject-name {
+        font-size: 0.78rem;
+        color: var(--text);
+        font-weight: 500;
+        line-height: 1.3;
+        margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .session-teacher {
+        font-size: 0.7rem;
+        color: var(--muted);
+    }
+
+    .session-status-line {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        margin-top: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+
+    .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .sc-present .status-dot  { background: var(--present); }
+    .sc-present .session-status-line { color: var(--present); }
+
+    .sc-absent .status-dot   { background: var(--absent); }
+    .sc-absent .session-status-line  { color: var(--absent); }
+
+    .sc-pending .status-dot  { background: var(--pending); }
+    .sc-pending .session-status-line { color: var(--pending); }
+
+    .sc-future .status-dot   { background: #a78bfa; }
+    .sc-future .session-status-line  { color: var(--future); }
+
+    .no-sessions {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 30px 10px;
+        color: var(--muted);
+        font-size: 0.8rem;
+        gap: 6px;
+    }
+
+    .no-sessions i { font-size: 1.4rem; opacity: 0.35; }
+
+    /* ── Bottom Panels ──────────────────── */
+    .panel-card {
+        background: var(--surface);
+        border-radius: var(--radius);
+        padding: 22px 24px;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border);
+        margin-bottom: 22px;
+    }
+
+    .panel-card h6 {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--muted);
+        margin-bottom: 16px;
+    }
+
+    /* Upcoming list */
+    .upcoming-item {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .upcoming-item:last-child { border-bottom: none; }
+
+    .date-block {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        background: var(--bg);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .date-block.is-today {
+        background: var(--accent);
+        color: white;
+    }
+
+    .date-num  { font-size: 1rem;  font-weight: 700; line-height: 1; }
+    .date-name { font-size: 0.6rem; font-weight: 600; text-transform: uppercase; opacity: 0.7; }
+
+    .upcoming-subject {
+        font-weight: 600;
+        font-size: 0.88rem;
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .upcoming-meta { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+    .upcoming-time {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--accent);
+        white-space: nowrap;
+    }
+
+    /* Day-dot summary */
+    .day-dot-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .day-dot-row:last-child { border-bottom: none; }
+
+    .dot-mini {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    .view-all-btn {
+        display: block;
+        text-align: center;
+        padding: 10px;
+        border-radius: var(--radius-sm);
+        background: var(--bg);
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-decoration: none;
+        border: 1px solid var(--border);
+        transition: all 0.2s;
+        margin-top: 16px;
+    }
+
+    .view-all-btn:hover {
+        background: var(--accent);
+        color: white;
+    }
+
+    /* ── Responsive ─────────────────────── */
+    @media (max-width: 1024px) {
+        .week-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 700px) {
+        .week-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 480px) {
+        .week-grid { grid-template-columns: 1fr; }
+        .schedule-header { flex-direction: column; align-items: flex-start; }
+    }
+</style>
+{% endblock %}
+
+{% block sidebar %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:student_dashboard' %}">
+            <i class="fas fa-home"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'attendance:student_schedule' %}">
+            <i class="fas fa-calendar-week"></i> My Schedule
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:student_attendance_detail' %}">
+            <i class="fas fa-calendar-check"></i> My Attendance
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'profile' %}">
+            <i class="fas fa-user"></i> My Profile
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="schedule-header">
+    <div>
+        <h1 class="schedule-title">
+            <i class="fas fa-calendar-week me-2" style="color:var(--accent);"></i>
+            Weekly Schedule
+        </h1>
+        <div class="week-label">
+            {{ week_start|date:"M d" }} – {{ week_end|date:"M d, Y" }}
+            &bull; {{ student.section.code }}
+            &bull; Sem {{ student.section.semester }}
+        </div>
+    </div>
+
+    <div class="week-nav">
+        <a href="?week={{ prev_week }}" class="nav-btn" title="Previous week">
+            <i class="fas fa-chevron-left"></i>
+        </a>
+        <a href="?week=0" class="today-btn">Today</a>
+        <a href="?week={{ next_week }}" class="nav-btn" title="Next week">
+            <i class="fas fa-chevron-right"></i>
+        </a>
+    </div>
+</div>
+
+<!-- Legend -->
+<div class="legend-row">
+    <strong style="color:var(--text);">Legend:</strong>
+    <span><span class="legend-dot" style="background:var(--present);"></span>Present</span>
+    <span><span class="legend-dot" style="background:var(--absent);"></span>Absent</span>
+    <span><span class="legend-dot" style="background:var(--pending);"></span>Pending</span>
+    <span><span class="legend-dot" style="background:#a78bfa;"></span>Upcoming</span>
+</div>
+
+<!-- ── Week Grid ─────────────────────────────────────────── -->
+<div class="week-grid">
+    {% for day in week_data %}
+    <div class="day-column {% if day.is_today %}today{% elif day.is_past %}past{% endif %}">
+
+        <!-- Day Header -->
+        <div class="day-header">
+            <div>
+                <div class="day-name">{{ day.short_day }}</div>
+                <div class="day-number">{{ day.day_num }}</div>
+                <div class="day-month">{{ day.month }}</div>
+            </div>
+            <span class="session-count-badge">
+                {{ day.session_count }}
+                class{{ day.session_count|pluralize }}
+            </span>
+        </div>
+
+        <!-- Sessions -->
+        <div class="day-sessions">
+            {% if day.sessions %}
+                {% for item in day.sessions %}
+                <div class="session-card sc-{{ item.status }}">
+                    <div class="session-time">
+                        {{ item.session.start_time|time:"h:i A" }} –
+                        {{ item.session.end_time|time:"h:i A" }}
+                    </div>
+                    <div class="session-subject-code">
+                        {{ item.session.subject.code }}
+                    </div>
+                    <div class="session-subject-name"
+                         title="{{ item.session.subject.name }}">
+                        {{ item.session.subject.name }}
+                    </div>
+                    <div class="session-teacher">
+                        <i class="fas fa-user-tie me-1"></i>
+                        {{ item.session.teacher.user.get_full_name }}
+                    </div>
+                    {% if item.session.topic %}
+                    <div class="session-teacher mt-1">
+                        <i class="fas fa-lightbulb me-1"></i>
+                        {{ item.session.topic|truncatewords:5 }}
+                    </div>
+                    {% endif %}
+                    <div class="session-status-line">
+                        <span class="status-dot"></span>
+                        {{ item.status_text }}
+                    </div>
+                </div>
+                {% endfor %}
+
+            {% else %}
+            <div class="no-sessions">
+                <i class="fas fa-moon"></i>
+                <span>No classes</span>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ── Bottom Row ────────────────────────────────────────── -->
+<div class="row">
+
+    <!-- Upcoming Sessions -->
+    <div class="col-md-7">
+        <div class="panel-card">
+            <h6><i class="fas fa-bolt me-2"></i>Upcoming This Week</h6>
+
+            {% if upcoming_list %}
+                {% for item in upcoming_list %}
+                <div class="upcoming-item">
+                    <div class="date-block {% if item.is_today %}is-today{% endif %}">
+                        <div class="date-num">{{ item.session.date|date:"d" }}</div>
+                        <div class="date-name">{{ item.session.date|date:"D" }}</div>
+                    </div>
+                    <div style="flex:1; min-width:0;">
+                        <div class="upcoming-subject">
+                            {{ item.session.subject.code }} —
+                            {{ item.session.subject.name }}
+                        </div>
+                        <div class="upcoming-meta">
+                            <i class="fas fa-user-tie me-1"></i>
+                            {{ item.session.teacher.user.get_full_name }}
+                            {% if item.session.topic %}
+                                &bull; {{ item.session.topic|truncatewords:5 }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="upcoming-time">
+                        {{ item.session.start_time|time:"h:i A" }}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-calendar-check fa-2x mb-2 d-block opacity-25"></i>
+                    No upcoming sessions this week.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Weekly Dot Summary -->
+    <div class="col-md-5">
+        <div class="panel-card">
+            <h6><i class="fas fa-chart-bar me-2"></i>This Week Summary</h6>
+
+            {% for day in week_data %}
+            {% if day.session_count > 0 %}
+            <div class="day-dot-row">
+                <span style="font-size:0.85rem; font-weight:600; color:var(--text); min-width:80px;">
+                    {{ day.day_name }}
+                </span>
+                <div style="display:flex; gap:5px; flex-wrap:wrap; align-items:center; flex:1;">
+                    {% for item in day.sessions %}
+                        {% if item.status == 'present' %}
+                            <span class="dot-mini"
+                                  style="background:var(--present);"
+                                  title="{{ item.session.subject.code }} – Present">
+                            </span>
+                        {% elif item.status == 'absent' %}
+                            <span class="dot-mini"
+                                  style="background:var(--absent);"
+                                  title="{{ item.session.subject.code }} – Absent">
+                            </span>
+                        {% elif item.status == 'pending' %}
+                            <span class="dot-mini"
+                                  style="background:var(--pending);"
+                                  title="{{ item.session.subject.code }} – Pending">
+                            </span>
+                        {% else %}
+                            <span class="dot-mini"
+                                  style="background:#a78bfa;"
+                                  title="{{ item.session.subject.code }} – Scheduled">
+                            </span>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <span style="font-size:0.72rem; color:var(--muted); white-space:nowrap;">
+                    {{ day.session_count }} class{{ day.session_count|pluralize }}
+                </span>
+            </div>
+            {% endif %}
+            {% endfor %}
+
+            <a href="{% url 'attendance:student_attendance_detail' %}"
+               class="view-all-btn">
+                <i class="fas fa-list me-2"></i>View Full Attendance
+            </a>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Staggered fade-in animation
+    const elements = document.querySelectorAll(
+        '.session-card, .day-column, .upcoming-item, .day-dot-row'
+    );
+    elements.forEach((el, i) => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(10px)';
+        el.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        setTimeout(() => {
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+        }, 40 * i);
+    });
+
+    // Auto-scroll to today on mobile
+    const todayCol = document.querySelector('.day-column.today');
+    if (todayCol && window.innerWidth < 768) {
+        todayCol.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+});
+</script>
+{% endblock %}

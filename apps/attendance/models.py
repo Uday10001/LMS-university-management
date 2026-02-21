@@ -7,94 +7,70 @@ from apps.academic.models import Section, Subject
 
 class ClassSession(models.Model):
     """
-    Represents a single lecture/class session.
-    Uniquely identified by date, subject, section, and teacher.
+    Represents one actual occurrence of a timetable slot on a specific date.
+    Auto-generated daily from TimetableSlot by a management command.
+    Teachers mark attendance on these.
     """
-    subject = models.ForeignKey(
+    timetable_slot = models.ForeignKey(
+        'academic.TimetableSlot',
+        on_delete=models.CASCADE,
+        related_name='class_sessions',
+        null=True,
+        blank=True,
+        help_text='The recurring slot this session was generated from'
+    )
+    subject  = models.ForeignKey(
         Subject,
         on_delete=models.CASCADE,
         related_name='class_sessions'
     )
-    
-    section = models.ForeignKey(
+    section  = models.ForeignKey(
         Section,
         on_delete=models.CASCADE,
         related_name='class_sessions'
     )
-    
-    teacher = models.ForeignKey(
+    teacher  = models.ForeignKey(
         Teacher,
         on_delete=models.CASCADE,
         related_name='class_sessions'
     )
-    
-    date = models.DateField(default=timezone.now)
-    
+    date       = models.DateField()
     start_time = models.TimeField()
-    end_time = models.TimeField()
-    
-    topic = models.CharField(
-        max_length=200,
-        blank=True,
-        help_text='Topic covered in this session'
+    end_time   = models.TimeField()
+    room       = models.CharField(max_length=50, blank=True)
+    topic      = models.CharField(
+        max_length=200, blank=True,
+        help_text='Topic covered — teacher fills this when marking attendance'
     )
-    
-    attendance_marked = models.BooleanField(
-        default=False,
-        help_text='Has attendance been marked for this session?'
-    )
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    is_cancelled       = models.BooleanField(default=False)
+    cancellation_note  = models.CharField(max_length=200, blank=True)
+    attendance_marked  = models.BooleanField(default=False)
+    created_at         = models.DateTimeField(auto_now_add=True)
+    updated_at         = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = 'Class Session'
+        verbose_name        = 'Class Session'
         verbose_name_plural = 'Class Sessions'
-        ordering = ['-date', '-start_time']
-        unique_together = ['date', 'subject', 'section', 'start_time']
+        ordering            = ['-date', 'start_time']
+        unique_together     = ['date', 'subject', 'section', 'start_time']
 
     def __str__(self):
-        return f"{self.subject.code} - {self.section.code} - {self.date}"
-
-    def clean(self):
-        """
-        Validation: end_time must be after start_time.
-        """
-        if self.start_time and self.end_time:
-            if self.end_time <= self.start_time:
-                raise ValidationError('End time must be after start time')
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
+        return f"{self.subject.code} — {self.section.code} — {self.date}"
 
     def get_total_students(self):
-        """
-        Returns total number of students in this session's section.
-        """
         return self.section.students.filter(is_active=True).count()
 
     def get_present_count(self):
-        """
-        Returns number of students marked present.
-        """
         return self.attendance_records.filter(is_present=True).count()
 
     def get_absent_count(self):
-        """
-        Returns number of students marked absent.
-        """
         return self.attendance_records.filter(is_present=False).count()
 
     def get_attendance_percentage(self):
-        """
-        Calculate attendance percentage for this session.
-        """
         total = self.get_total_students()
         if total == 0:
             return 0
-        present = self.get_present_count()
-        return round((present / total) * 100, 2)
+        return round((self.get_present_count() / total) * 100, 2)
 
 
 class Attendance(models.Model):

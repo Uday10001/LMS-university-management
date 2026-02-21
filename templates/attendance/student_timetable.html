@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+{% load attendance_extras %}
+{% block title %}My Timetable{% endblock %}
+
+{% block extra_css %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+    * { font-family: 'Outfit', sans-serif; }
+    :root {
+        --bg:#f4f6fb; --surface:#fff; --border:#e8edf5;
+        --text:#0f1628; --muted:#7a869a; --accent:#0891b2;
+        --radius:12px; --shadow:0 2px 12px rgba(0,0,0,0.07);
+    }
+    body { background: var(--bg); }
+
+    .banner {
+        background: var(--text); color: white;
+        border-radius: var(--radius); padding: 22px 28px;
+        margin-bottom: 22px; position: relative; overflow: hidden;
+    }
+    .banner::after {
+        content: attr(data-section);
+        position: absolute; right: 20px; top: -10px;
+        font-size: 6rem; font-weight: 800;
+        color: rgba(255,255,255,0.04); pointer-events: none;
+    }
+    .banner h1 { font-size: 1.5rem; font-weight: 800; margin: 0; }
+    .banner p  { color: rgba(255,255,255,0.5); margin: 4px 0 0; font-size: 0.85rem; }
+
+    .timetable-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 16px; margin-bottom: 24px;
+    }
+
+    .day-card {
+        background: var(--surface); border-radius: var(--radius);
+        border: 1px solid var(--border); box-shadow: var(--shadow);
+        overflow: hidden; transition: transform 0.2s;
+    }
+    .day-card:hover { transform: translateY(-3px); }
+    .day-card.is-today { border-color: var(--accent); }
+
+    .day-card-header {
+        padding: 12px 18px; border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+        background: var(--bg);
+    }
+    .day-card.is-today .day-card-header { background: var(--accent); color: white; }
+
+    .dch-name {
+        font-size: 0.75rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 1px; color: var(--muted);
+    }
+    .day-card.is-today .dch-name { color: rgba(255,255,255,0.75); }
+    .dch-count {
+        font-size: 0.7rem; background: var(--border);
+        color: var(--muted); padding: 2px 8px;
+        border-radius: 10px; font-weight: 700;
+    }
+    .day-card.is-today .dch-count { background: rgba(255,255,255,0.2); color: white; }
+
+    .day-card-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+
+    .slot-item {
+        border-radius: 8px; padding: 11px 14px;
+        border-left: 3px solid var(--accent); background: #f0fbff;
+    }
+    .si-time {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.68rem; font-weight: 500; color: var(--muted);
+    }
+    .si-code  { font-weight: 700; color: var(--accent); font-size: 0.82rem; }
+    .si-name  { font-size: 0.8rem; color: var(--text); font-weight: 500; margin: 1px 0 5px; }
+    .si-meta  { font-size: 0.7rem; color: var(--muted); }
+    .si-room  {
+        display: inline-block; background: #ecfdf5; color: #059669;
+        padding: 1px 7px; border-radius: 5px;
+        font-size: 0.68rem; font-weight: 600; margin-top: 4px;
+    }
+
+    .free-day {
+        padding: 24px; text-align: center;
+        color: var(--muted); font-size: 0.82rem;
+    }
+    .free-day i { display: block; font-size: 1.5rem; opacity: 0.2; margin-bottom: 6px; }
+
+    /* Today's actual sessions */
+    .today-box {
+        background: var(--surface); border-radius: var(--radius);
+        border: 2px solid var(--accent); box-shadow: var(--shadow);
+        margin-bottom: 22px; overflow: hidden;
+    }
+    .today-box-head {
+        background: var(--accent); color: white; padding: 12px 20px;
+        font-weight: 700; font-size: 0.85rem;
+    }
+    .today-slot {
+        padding: 14px 20px; border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; gap: 16px;
+    }
+    .today-slot:last-child { border-bottom: none; }
+    .ts-dot {
+        width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+        background: var(--accent);
+    }
+
+    @media (max-width: 640px) {
+        .timetable-grid { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="banner" data-section="{{ student.section.code }}">
+    <h1><i class="fas fa-calendar-week me-2"></i>My Timetable</h1>
+    <p>
+        {{ student.section.name }} ({{ student.section.code }}) &bull;
+        Semester {{ student.section.semester }} &bull;
+        {{ student.section.academic_year }}
+    </p>
+</div>
+
+<!-- Today Quick View -->
+{% if today_sessions %}
+<div class="today-box">
+    <div class="today-box-head">
+        <i class="fas fa-sun me-2"></i>
+        Today — {{ today|date:"l, M d, Y" }}
+    </div>
+    {% for session in today_sessions %}
+    <div class="today-slot">
+        <div class="ts-dot"></div>
+        <div style="flex:1; min-width:0;">
+            <div style="font-weight:700; font-size:0.9rem;">
+                {{ session.subject.code }} — {{ session.subject.name }}
+            </div>
+            <div style="font-size:0.75rem; color:var(--muted); margin-top:3px;">
+                <i class="fas fa-user-tie me-1"></i>{{ session.teacher.user.get_full_name }}
+                {% if session.room %}
+                    &bull; <i class="fas fa-door-open me-1"></i>{{ session.room }}
+                {% endif %}
+            </div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:var(--accent); white-space:nowrap;">
+            {{ session.start_time|time:"h:i A" }}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Full Weekly Timetable -->
+<div class="timetable-grid">
+    {% for day in days %}
+    {% with day_slots=timetable_by_day|get_item:day %}
+    <div class="day-card {% if day == today|date:'l' %}is-today{% endif %}">
+        <div class="day-card-header">
+            <span class="dch-name">
+                {{ day }}
+                {% if day == today|date:"l" %} — Today{% endif %}
+            </span>
+            <span class="dch-count">{{ day_slots|length }}</span>
+        </div>
+        <div class="day-card-body">
+            {% if day_slots %}
+                {% for slot in day_slots %}
+                <div class="slot-item">
+                    <div class="si-time">
+                        {{ slot.start_time|time:"h:i A" }} – {{ slot.end_time|time:"h:i A" }}
+                    </div>
+                    <div class="si-code">{{ slot.subject.code }}</div>
+                    <div class="si-name">{{ slot.subject.name }}</div>
+                    <div class="si-meta">
+                        <i class="fas fa-user-tie me-1"></i>{{ slot.teacher.user.get_full_name }}
+                    </div>
+                    {% if slot.room %}
+                        <span class="si-room">
+                            <i class="fas fa-door-open me-1"></i>{{ slot.room }}
+                        </span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="free-day">
+                    <i class="fas fa-moon"></i>No classes
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endwith %}
+    {% endfor %}
+</div>
+
+{% endblock %}

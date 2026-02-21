@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% load attendance_extras %}
+{% block title %}Timetable Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+    * { font-family: 'Outfit', sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    :root {
+        --bg: #f4f6fb; --surface: #fff; --border: #e8edf5;
+        --text: #0f1628; --muted: #7a869a; --accent: #2563eb;
+        --radius: 12px; --shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+    body { background: var(--bg); }
+
+    .page-header {
+        background: var(--text); color: white;
+        border-radius: var(--radius); padding: 24px 28px;
+        margin-bottom: 22px;
+        display: flex; align-items: center;
+        justify-content: space-between; flex-wrap: wrap; gap: 14px;
+    }
+
+    .page-header h1 { font-size: 1.6rem; font-weight: 800; margin: 0; }
+    .page-header p  { margin: 4px 0 0; color: rgba(255,255,255,0.5); font-size: 0.85rem; }
+
+    /* Section filter pills */
+    .section-pills {
+        display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;
+    }
+    .section-pill {
+        padding: 6px 16px; border-radius: 20px;
+        border: 1px solid var(--border); background: var(--surface);
+        color: var(--muted); font-size: 0.8rem; font-weight: 600;
+        text-decoration: none; transition: all 0.15s;
+    }
+    .section-pill:hover, .section-pill.active {
+        background: var(--accent); color: white; border-color: var(--accent);
+    }
+
+    /* Day blocks */
+    .day-block {
+        background: var(--surface); border-radius: var(--radius);
+        border: 1px solid var(--border); box-shadow: var(--shadow);
+        margin-bottom: 16px; overflow: hidden;
+    }
+    .day-header {
+        padding: 12px 20px; background: var(--bg);
+        border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .day-name {
+        font-weight: 700; font-size: 0.82rem;
+        text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted);
+    }
+    .day-count {
+        font-size: 0.72rem; background: var(--border);
+        color: var(--muted); padding: 2px 8px;
+        border-radius: 10px; font-weight: 600;
+    }
+
+    /* Slot grid inside day */
+    .slots-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 12px; padding: 16px;
+    }
+    .slot-card {
+        border-radius: 10px; padding: 14px 16px;
+        border-left: 3px solid var(--accent);
+        background: #f8faff; transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .slot-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+
+    .slot-time {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.72rem; font-weight: 600;
+        color: var(--muted); margin-bottom: 6px;
+    }
+    .slot-subject {
+        font-size: 0.82rem; font-weight: 700; color: var(--accent);
+    }
+    .slot-subject-name {
+        font-size: 0.78rem; color: var(--text);
+        font-weight: 500; margin: 2px 0 6px;
+    }
+    .slot-meta {
+        font-size: 0.72rem; color: var(--muted);
+        display: flex; flex-direction: column; gap: 2px;
+    }
+    .slot-section-badge {
+        display: inline-block; background: #e0e7ff;
+        color: var(--accent); padding: 2px 8px;
+        border-radius: 6px; font-size: 0.7rem; font-weight: 700;
+        margin-bottom: 4px;
+    }
+    .slot-room {
+        font-size: 0.68rem; background: #f0fdf4;
+        color: #059669; padding: 2px 7px;
+        border-radius: 5px; display: inline-block; margin-top: 4px;
+    }
+    .no-slots {
+        padding: 28px; text-align: center;
+        color: var(--muted); font-size: 0.85rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1><i class="fas fa-calendar-alt me-2"></i>Master Timetable</h1>
+        <p>
+            {% if selected_section %}
+                Viewing: {{ selected_section.name }} ({{ selected_section.code }})
+            {% else %}
+                All sections — weekly recurring schedule
+            {% endif %}
+        </p>
+    </div>
+    <a href="/admin/academic/timetableslot/add/"
+       style="padding:10px 20px; background:white; color:var(--text);
+              border-radius:10px; font-weight:700; font-size:0.85rem;
+              text-decoration:none; display:flex; align-items:center; gap:8px;">
+        <i class="fas fa-plus"></i> Add Slot
+    </a>
+</div>
+
+<!-- Section Filter -->
+<div class="section-pills">
+    <a href="{% url 'attendance:management_timetable' %}"
+       class="section-pill {% if not selected_section %}active{% endif %}">
+        All Sections
+    </a>
+    {% for section in sections %}
+    <a href="?section={{ section.id }}"
+       class="section-pill {% if selected_section.id == section.id %}active{% endif %}">
+        {{ section.code }}
+    </a>
+    {% endfor %}
+</div>
+
+<!-- Timetable by Day -->
+{% for day in days %}
+<div class="day-block">
+    <div class="day-header">
+        <span class="day-name">{{ day }}</span>
+        <span class="day-count">{{ timetable_by_day|get_item:day|length }} slot{{ timetable_by_day|get_item:day|length|pluralize }}</span>
+    </div>
+
+    {% with day_slots=timetable_by_day|get_item:day %}
+    {% if day_slots %}
+        <div class="slots-grid">
+            {% for slot in day_slots %}
+            <div class="slot-card">
+                <div class="slot-time">
+                    {{ slot.start_time|time:"h:i A" }} – {{ slot.end_time|time:"h:i A" }}
+                </div>
+                <div>
+                    <span class="slot-section-badge">{{ slot.section.code }}</span>
+                </div>
+                <div class="slot-subject">{{ slot.subject.code }}</div>
+                <div class="slot-subject-name">{{ slot.subject.name }}</div>
+                <div class="slot-meta">
+                    <span><i class="fas fa-user-tie me-1"></i>{{ slot.teacher.user.get_full_name }}</span>
+                    {% if slot.room %}
+                    <span class="slot-room"><i class="fas fa-door-open me-1"></i>{{ slot.room }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="no-slots">
+            <i class="fas fa-moon me-2"></i>No classes scheduled
+        </div>
+    {% endif %}
+    {% endwith %}
+</div>
+{% endfor %}
+
+<!-- Pending Change Requests -->
+{% if pending_requests %}
+<div style="background:#fff; border-radius:12px; border:1px solid #e8edf5;
+            box-shadow:0 2px 12px rgba(0,0,0,0.07); margin-bottom:20px; overflow:hidden;">
+    <div style="padding:13px 20px; border-bottom:1px solid #e8edf5; background:#fffbeb;
+                display:flex; align-items:center; justify-content:space-between;">
+        <span style="font-size:0.75rem; font-weight:700; text-transform:uppercase;
+                     letter-spacing:1px; color:#b45309;">
+            <i class="fas fa-bell me-2"></i>
+            {{ pending_requests|length }} Pending Change Request{{ pending_requests|length|pluralize }}
+        </span>
+    </div>
+    {% for req in pending_requests %}
+    <div style="padding:13px 20px; border-bottom:1px solid #e8edf5;
+                display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:0;">
+            <div style="font-weight:600; font-size:0.875rem;">
+                {{ req.teacher.user.get_full_name }} —
+                {{ req.get_request_type_display }}
+            </div>
+            <div style="font-size:0.72rem; color:#7a869a; margin-top:2px;
+                        font-family:'JetBrains Mono',monospace;">
+                {{ req.timetable_slot.get_day_of_week_display }} |
+                {{ req.timetable_slot.subject.code }} |
+                {{ req.timetable_slot.section.code }}
+            </div>
+            <div style="font-size:0.72rem; color:#7a869a; margin-top:2px;">
+                "{{ req.reason|truncatewords:12 }}"
+            </div>
+        </div>
+        <div style="font-size:0.72rem; color:#7a869a;">
+            {{ req.created_at|timesince }} ago
+        </div>
+        <a href="{% url 'attendance:review_change_request' req.id %}"
+           style="padding:7px 16px; border-radius:8px; background:#1e2235;
+                  color:white; font-size:0.78rem; font-weight:700;
+                  text-decoration:none; white-space:nowrap;">
+            Review →
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

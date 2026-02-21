@@ -1,0 +1,727 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Profile{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 30px;
+        margin-bottom: 25px;
+        position: relative;
+        overflow: hidden;
+    }
+    .profile-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 300px;
+        height: 300px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.05);
+    }
+    .profile-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 4px solid rgba(255,255,255,0.5);
+        object-fit: cover;
+        background: rgba(255,255,255,0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: white;
+    }
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .nav-tabs .nav-link {
+        color: #495057;
+        font-weight: 500;
+        border-radius: 8px 8px 0 0;
+    }
+    .nav-tabs .nav-link.active {
+        color: #667eea;
+        font-weight: 600;
+        border-bottom: 3px solid #667eea;
+    }
+    .tab-content {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        border-radius: 0 0 10px 10px;
+        padding: 25px;
+    }
+    .info-label {
+        font-weight: 600;
+        color: #6c757d;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .info-value {
+        font-size: 1rem;
+        color: #212529;
+        margin-bottom: 15px;
+    }
+    .stat-pill {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .badge-subject {
+        background: #e8f0fe;
+        color: #1a73e8;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        display: inline-block;
+        margin: 3px;
+    }
+    .badge-section {
+        background: #e6f4ea;
+        color: #1e8e3e;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        display: inline-block;
+        margin: 3px;
+    }
+    .progress-custom {
+        height: 10px;
+        border-radius: 5px;
+    }
+    .attendance-row {
+        padding: 10px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .attendance-row:last-child {
+        border-bottom: none;
+    }
+    .password-strength {
+        height: 5px;
+        border-radius: 3px;
+        margin-top: 5px;
+        transition: all 0.3s;
+    }
+</style>
+{% endblock %}
+
+{% block sidebar %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard' %}">
+            <i class="fas fa-home"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'profile' %}">
+            <i class="fas fa-user"></i> My Profile
+        </a>
+    </li>
+
+    {% if user.user_type == 'teacher' %}
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:create_session' %}">
+            <i class="fas fa-plus-circle"></i> Create Session
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:teacher_sessions_list' %}">
+            <i class="fas fa-list"></i> My Sessions
+        </a>
+    </li>
+    {% elif user.user_type == 'student' %}
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:student_attendance_detail' %}">
+            <i class="fas fa-calendar-check"></i> My Attendance
+        </a>
+    </li>
+    {% endif %}
+</ul>
+{% endblock %}
+
+{% block content %}
+
+<!-- Profile Header -->
+<div class="profile-header">
+    <div class="row align-items-center">
+        <div class="col-auto">
+            <div class="profile-avatar">
+                {% if user.profile_pic %}
+                    <img src="{{ user.profile_pic.url }}" alt="Profile Picture">
+                {% else %}
+                    {{ user.first_name|first }}{{ user.last_name|first }}
+                {% endif %}
+            </div>
+        </div>
+        <div class="col">
+            <h2 class="mb-1">{{ user.get_full_name }}</h2>
+            <p class="mb-2 opacity-75">{{ user.email }}</p>
+            <span class="badge bg-light text-dark px-3 py-2">
+                {% if user.user_type == 'student' %}
+                    <i class="fas fa-graduation-cap"></i> Student
+                    &nbsp;|&nbsp;
+                    <i class="fas fa-id-card"></i> {{ student.roll_number }}
+                    &nbsp;|&nbsp;
+                    <i class="fas fa-users"></i> {{ student.section.code }}
+                {% elif user.user_type == 'teacher' %}
+                    <i class="fas fa-chalkboard-teacher"></i> Teacher
+                    &nbsp;|&nbsp;
+                    <i class="fas fa-id-badge"></i> {{ teacher.employee_id }}
+                    &nbsp;|&nbsp;
+                    <i class="fas fa-building"></i> {{ teacher.department }}
+                {% else %}
+                    <i class="fas fa-user-shield"></i> Management
+                {% endif %}
+            </span>
+        </div>
+
+        {% if user.user_type == 'student' %}
+        <div class="col-auto text-end">
+            <div class="text-center">
+                <div style="font-size: 2.5rem; font-weight: bold;">{{ overall_percentage }}%</div>
+                <div class="opacity-75">Overall Attendance</div>
+            </div>
+        </div>
+        {% elif user.user_type == 'teacher' %}
+        <div class="col-auto text-end">
+            <div class="text-center">
+                <div style="font-size: 2.5rem; font-weight: bold;">{{ total_sessions }}</div>
+                <div class="opacity-75">Total Sessions</div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Tabs Navigation -->
+<ul class="nav nav-tabs" id="profileTabs" role="tablist">
+    <li class="nav-item">
+        <a class="nav-link active" id="overview-tab" data-bs-toggle="tab" href="#overview" role="tab">
+            <i class="fas fa-th-large"></i> Overview
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="edit-tab" data-bs-toggle="tab" href="#edit" role="tab">
+            <i class="fas fa-edit"></i> Edit Profile
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="password-tab" data-bs-toggle="tab" href="#password" role="tab">
+            <i class="fas fa-lock"></i> Change Password
+        </a>
+    </li>
+    {% if user.user_type == 'student' %}
+    <li class="nav-item">
+        <a class="nav-link" id="attendance-tab" data-bs-toggle="tab" href="#attendance" role="tab">
+            <i class="fas fa-calendar-check"></i> Attendance
+        </a>
+    </li>
+    {% elif user.user_type == 'teacher' %}
+    <li class="nav-item">
+        <a class="nav-link" id="assignments-tab" data-bs-toggle="tab" href="#assignments" role="tab">
+            <i class="fas fa-book"></i> Assignments
+        </a>
+    </li>
+    {% endif %}
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content" id="profileTabsContent">
+
+    <!-- ============================================================ -->
+    <!-- OVERVIEW TAB -->
+    <!-- ============================================================ -->
+    <div class="tab-pane fade show active" id="overview" role="tabpanel">
+        <div class="row">
+            <!-- Personal Info -->
+            <div class="col-md-6">
+                <h5 class="mb-4 text-primary">
+                    <i class="fas fa-user-circle"></i> Personal Information
+                </h5>
+
+                <div class="info-label">Full Name</div>
+                <div class="info-value">{{ user.get_full_name }}</div>
+
+                <div class="info-label">Email Address</div>
+                <div class="info-value">{{ user.email }}</div>
+
+                <div class="info-label">Role</div>
+                <div class="info-value">
+                    <span class="badge bg-primary">{{ user.get_user_type_display }}</span>
+                </div>
+
+                <div class="info-label">Member Since</div>
+                <div class="info-value">{{ user.date_joined|date:"F d, Y" }}</div>
+
+                <div class="info-label">Last Login</div>
+                <div class="info-value">{{ user.last_login|date:"F d, Y h:i A" }}</div>
+            </div>
+
+            <!-- Role-specific Info -->
+            <div class="col-md-6">
+                {% if user.user_type == 'student' %}
+                <h5 class="mb-4 text-primary">
+                    <i class="fas fa-graduation-cap"></i> Student Information
+                </h5>
+
+                <div class="info-label">Roll Number</div>
+                <div class="info-value">
+                    <code>{{ student.roll_number }}</code>
+                </div>
+
+                <div class="info-label">Section</div>
+                <div class="info-value">
+                    {{ student.section.name }} ({{ student.section.code }})
+                </div>
+
+                <div class="info-label">Semester</div>
+                <div class="info-value">Semester {{ student.section.semester }}</div>
+
+                <div class="info-label">Academic Year</div>
+                <div class="info-value">{{ student.section.academic_year }}</div>
+
+                <div class="info-label">Enrollment Date</div>
+                <div class="info-value">{{ student.enrollment_date|date:"F d, Y" }}</div>
+
+                <div class="info-label">Overall Attendance</div>
+                <div class="info-value">
+                    <span class="stat-pill {% if overall_percentage >= 75 %}bg-success text-white{% elif overall_percentage >= 50 %}bg-warning text-dark{% else %}bg-danger text-white{% endif %}">
+                        {{ overall_percentage }}%
+                    </span>
+                    <small class="text-muted ms-2">
+                        {% if overall_percentage >= 75 %}
+                            ✅ Good Standing
+                        {% elif overall_percentage >= 50 %}
+                            ⚠️ At Risk
+                        {% else %}
+                            ❌ Below Requirement
+                        {% endif %}
+                    </small>
+                </div>
+
+                {% elif user.user_type == 'teacher' %}
+                <h5 class="mb-4 text-primary">
+                    <i class="fas fa-chalkboard-teacher"></i> Teacher Information
+                </h5>
+
+                <div class="info-label">Employee ID</div>
+                <div class="info-value"><code>{{ teacher.employee_id }}</code></div>
+
+                <div class="info-label">Department</div>
+                <div class="info-value">{{ teacher.department|default:"Not specified" }}</div>
+
+                <div class="info-label">Joining Date</div>
+                <div class="info-value">{{ teacher.joining_date|date:"F d, Y" }}</div>
+
+                <div class="info-label">Total Sessions</div>
+                <div class="info-value">
+                    <span class="stat-pill bg-primary text-white">{{ total_sessions }}</span>
+                </div>
+
+                <div class="info-label">Attendance Marked</div>
+                <div class="info-value">
+                    <span class="stat-pill bg-success text-white">{{ marked_sessions }}</span>
+                    out of {{ total_sessions }}
+                </div>
+
+                {% else %}
+                <h5 class="mb-4 text-primary">
+                    <i class="fas fa-user-shield"></i> Management Information
+                </h5>
+
+                <div class="info-label">Account Type</div>
+                <div class="info-value">
+                    <span class="badge bg-dark">Management / Admin</span>
+                </div>
+
+                <div class="info-label">Access Level</div>
+                <div class="info-value">Full Read Access to All Records</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- EDIT PROFILE TAB -->
+    <!-- ============================================================ -->
+    <div class="tab-pane fade" id="edit" role="tabpanel">
+        <h5 class="mb-4 text-primary">
+            <i class="fas fa-edit"></i> Edit Profile
+        </h5>
+
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_profile">
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">First Name *</label>
+                        {{ user_form.first_name }}
+                        {% if user_form.first_name.errors %}
+                            <div class="text-danger small">{{ user_form.first_name.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Last Name *</label>
+                        {{ user_form.last_name }}
+                        {% if user_form.last_name.errors %}
+                            <div class="text-danger small">{{ user_form.last_name.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Email Address</label>
+                <input type="email" class="form-control" value="{{ user.email }}" disabled>
+                <div class="form-text">Email cannot be changed. Contact admin if needed.</div>
+            </div>
+
+            <!-- Current Profile Picture -->
+            {% if user.profile_pic %}
+            <div class="mb-3">
+                <label class="form-label">Current Profile Picture</label>
+                <div>
+                    <img src="{{ user.profile_pic.url }}" alt="Current Profile Picture"
+                         style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;">
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="mb-3">
+                <label class="form-label">Profile Picture</label>
+                {{ user_form.profile_pic }}
+                <div class="form-text">Upload a clear photo. Supported: JPG, PNG</div>
+            </div>
+
+            <!-- Role-specific fields -->
+            {% if user.user_type == 'teacher' and role_form %}
+            <hr>
+            <h6 class="text-muted mb-3">Teacher Information</h6>
+            <div class="mb-3">
+                <label class="form-label">Department</label>
+                {{ role_form.department }}
+                {% if role_form.department.errors %}
+                    <div class="text-danger small">{{ role_form.department.errors }}</div>
+                {% endif %}
+            </div>
+            {% elif user.user_type == 'student' and role_form %}
+            <hr>
+            <h6 class="text-muted mb-3">Student Information</h6>
+            <div class="mb-3">
+                <label class="form-label">Roll Number</label>
+                {{ role_form.roll_number }}
+                <div class="form-text">Roll number cannot be changed.</div>
+            </div>
+            {% endif %}
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+                <a href="{% url 'profile' %}" class="btn btn-secondary ms-2">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- CHANGE PASSWORD TAB -->
+    <!-- ============================================================ -->
+    <div class="tab-pane fade" id="password" role="tabpanel">
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="mb-4 text-primary">
+                    <i class="fas fa-lock"></i> Change Password
+                </h5>
+
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="change_password">
+
+                    <div class="mb-3">
+                        <label class="form-label">Current Password *</label>
+                        {{ password_form.current_password }}
+                        {% if password_form.current_password.errors %}
+                            <div class="text-danger small">{{ password_form.current_password.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">New Password *</label>
+                        {{ password_form.new_password }}
+                        <div class="password-strength" id="passwordStrengthBar"></div>
+                        <small id="passwordStrengthText" class="form-text"></small>
+                        {% if password_form.new_password.errors %}
+                            <div class="text-danger small">{{ password_form.new_password.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Confirm New Password *</label>
+                        {{ password_form.confirm_password }}
+                        <small id="passwordMatchText" class="form-text"></small>
+                        {% if password_form.confirm_password.errors %}
+                            <div class="text-danger small">{{ password_form.confirm_password.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    {% if password_form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {{ password_form.non_field_errors }}
+                    </div>
+                    {% endif %}
+
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <h6 class="card-title">Password Requirements</h6>
+                            <ul class="mb-0 small">
+                                <li>Minimum 8 characters</li>
+                                <li>Mix of uppercase and lowercase letters</li>
+                                <li>Include at least one number</li>
+                                <li>Special characters recommended</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-key"></i> Change Password
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- STUDENT ATTENDANCE TAB -->
+    <!-- ============================================================ -->
+    {% if user.user_type == 'student' %}
+    <div class="tab-pane fade" id="attendance" role="tabpanel">
+        <h5 class="mb-4 text-primary">
+            <i class="fas fa-calendar-check"></i> Subject-wise Attendance
+        </h5>
+
+        {% if subjects_attendance %}
+            {% for item in subjects_attendance %}
+            <div class="attendance-row">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <strong>{{ item.subject.code }}</strong>
+                        <br>
+                        <small class="text-muted">{{ item.subject.name }}</small>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="progress progress-custom">
+                            <div class="progress-bar
+                                {% if item.percentage >= 75 %}bg-success
+                                {% elif item.percentage >= 50 %}bg-warning
+                                {% else %}bg-danger{% endif %}"
+                                style="width: {{ item.percentage }}%">
+                            </div>
+                        </div>
+                        <small class="text-muted">
+                            {{ item.present }} present / {{ item.absent }} absent / {{ item.total }} total
+                        </small>
+                    </div>
+                    <div class="col-md-3 text-end">
+                        <span class="stat-pill
+                            {% if item.percentage >= 75 %}bg-success text-white
+                            {% elif item.percentage >= 50 %}bg-warning text-dark
+                            {% else %}bg-danger text-white{% endif %}">
+                            {{ item.percentage }}%
+                        </span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <div class="mt-4 text-center">
+                <a href="{% url 'attendance:student_attendance_detail' %}" class="btn btn-primary">
+                    <i class="fas fa-list"></i> View Full Attendance Records
+                </a>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
+                <p class="text-muted">No attendance records yet.</p>
+            </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ============================================================ -->
+    <!-- TEACHER ASSIGNMENTS TAB -->
+    <!-- ============================================================ -->
+    {% if user.user_type == 'teacher' %}
+    <div class="tab-pane fade" id="assignments" role="tabpanel">
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="mb-4 text-primary">
+                    <i class="fas fa-book"></i> Assigned Subjects
+                </h5>
+
+                {% if subjects %}
+                    {% for subject in subjects %}
+                    <div class="d-flex align-items-center mb-3 p-3 bg-light rounded">
+                        <div class="me-3">
+                            <span class="badge-subject">{{ subject.code }}</span>
+                        </div>
+                        <div>
+                            <div class="fw-bold">{{ subject.name }}</div>
+                            <small class="text-muted">
+                                Sem {{ subject.semester }} &bull; {{ subject.credits }} credits
+                            </small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No subjects assigned yet.</p>
+                {% endif %}
+            </div>
+
+            <div class="col-md-6">
+                <h5 class="mb-4 text-primary">
+                    <i class="fas fa-users"></i> Assigned Sections
+                </h5>
+
+                {% if sections %}
+                    {% for section in sections %}
+                    <div class="d-flex align-items-center mb-3 p-3 bg-light rounded">
+                        <div class="me-3">
+                            <span class="badge-section">{{ section.code }}</span>
+                        </div>
+                        <div>
+                            <div class="fw-bold">{{ section.name }}</div>
+                            <small class="text-muted">
+                                Sem {{ section.semester }} &bull;
+                                {{ section.get_student_count }} students
+                            </small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No sections assigned yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Password strength checker
+const newPasswordInput = document.getElementById('id_new_password');
+const confirmPasswordInput = document.getElementById('id_confirm_password');
+const strengthBar = document.getElementById('passwordStrengthBar');
+const strengthText = document.getElementById('passwordStrengthText');
+const matchText = document.getElementById('passwordMatchText');
+
+if (newPasswordInput) {
+    newPasswordInput.addEventListener('input', function() {
+        const password = this.value;
+        const strength = getPasswordStrength(password);
+
+        strengthBar.style.width = strength.percentage + '%';
+        strengthBar.style.background = strength.color;
+        strengthText.textContent = strength.label;
+        strengthText.style.color = strength.color;
+    });
+}
+
+if (confirmPasswordInput) {
+    confirmPasswordInput.addEventListener('input', function() {
+        const newPassword = newPasswordInput.value;
+        const confirmPassword = this.value;
+
+        if (confirmPassword === '') {
+            matchText.textContent = '';
+        } else if (newPassword === confirmPassword) {
+            matchText.textContent = '✅ Passwords match!';
+            matchText.style.color = 'green';
+        } else {
+            matchText.textContent = '❌ Passwords do not match';
+            matchText.style.color = 'red';
+        }
+    });
+}
+
+function getPasswordStrength(password) {
+    let score = 0;
+
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[a-z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+
+    if (score <= 2) return { percentage: 30, color: '#dc3545', label: 'Weak' };
+    if (score <= 4) return { percentage: 65, color: '#ffc107', label: 'Medium' };
+    return { percentage: 100, color: '#198754', label: 'Strong' };
+}
+
+// Activate correct tab if there are errors
+{% if password_form.errors %}
+    document.getElementById('password-tab').click();
+{% elif user_form.errors or role_form.errors %}
+    document.getElementById('edit-tab').click();
+{% endif %}
+</script>
+{% endblock %}
+```
+
+---
+
+## ✅ **Key Features by Role**
+
+### **Student Profile**
+✅ Avatar with initials fallback  
+✅ Roll number, section, semester info  
+✅ Overall attendance percentage (color-coded)  
+✅ Subject-wise attendance with progress bars  
+✅ Link to full attendance records  
+
+### **Teacher Profile**
+✅ Employee ID and department info  
+✅ Total sessions and marked sessions stats  
+✅ List of assigned subjects with credits  
+✅ List of assigned sections with student counts  
+✅ Editable department field  
+
+### **Management Profile**
+✅ Account type and access level info  
+✅ Clean overview of permissions  
+
+### **All Users**
+✅ Profile picture upload with preview  
+✅ Name editing  
+✅ Password change with strength indicator  
+✅ Password match validation  
+✅ Auto-opens correct tab on form errors  
+
+---
+
+## 🧪 **Test the Profile Page**
+```
+http://127.0.0.1:8000/accounts/profile/

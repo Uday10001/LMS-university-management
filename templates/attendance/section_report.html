@@ -1,0 +1,778 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ section.code }} — Section Report{% endblock %}
+
+{% block extra_css %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    * { font-family: 'Sora', sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    :root {
+        --bg:       #f4f6fb;
+        --surface:  #ffffff;
+        --border:   #e8edf5;
+        --text:     #0f1628;
+        --muted:    #7a869a;
+        --good:     #0a7c4e;
+        --good-bg:  #eafaf3;
+        --warn:     #b45309;
+        --warn-bg:  #fef9ec;
+        --bad:      #b91c1c;
+        --bad-bg:   #fef2f2;
+        --accent:   #2563eb;
+        --shadow:   0 1px 3px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.05);
+        --radius:   12px;
+    }
+
+    body { background: var(--bg); }
+
+    /* ── Page Banner ────────────────────── */
+    .report-banner {
+        background: var(--text);
+        color: white;
+        border-radius: var(--radius);
+        padding: 28px 32px;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .report-banner::after {
+        content: attr(data-code);
+        position: absolute;
+        right: -10px;
+        top: -20px;
+        font-size: 8rem;
+        font-weight: 800;
+        color: rgba(255,255,255,0.04);
+        line-height: 1;
+        pointer-events: none;
+        font-family: 'Sora', sans-serif;
+    }
+
+    .banner-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: rgba(255,255,255,0.45);
+        margin-bottom: 6px;
+    }
+
+    .banner-title {
+        font-size: 2rem;
+        font-weight: 800;
+        margin: 0 0 4px 0;
+        line-height: 1.1;
+    }
+
+    .banner-sub {
+        font-size: 0.85rem;
+        color: rgba(255,255,255,0.55);
+    }
+
+    .banner-meta {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 16px;
+    }
+
+    .meta-chip {
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.15);
+        color: rgba(255,255,255,0.8);
+        padding: 5px 13px;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 500;
+    }
+
+    /* ── Stat Cards ─────────────────────── */
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 14px;
+        margin-bottom: 24px;
+    }
+
+    .stat-tile {
+        background: var(--surface);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border);
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.2s;
+    }
+
+    .stat-tile:hover { transform: translateY(-3px); }
+
+    .stat-tile-label {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--muted);
+        margin-bottom: 8px;
+    }
+
+    .stat-tile-value {
+        font-size: 1.9rem;
+        font-weight: 800;
+        color: var(--text);
+        line-height: 1;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stat-tile-sub {
+        font-size: 0.72rem;
+        color: var(--muted);
+        margin-top: 5px;
+    }
+
+    .tile-accent {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        border-radius: 0 0 var(--radius) var(--radius);
+    }
+
+    /* ── Section Panels ─────────────────── */
+    .panel {
+        background: var(--surface);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border);
+        margin-bottom: 24px;
+        overflow: hidden;
+    }
+
+    .panel-head {
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .panel-title {
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--muted);
+        margin: 0;
+    }
+
+    /* ── Sort Controls ──────────────────── */
+    .sort-group {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .sort-btn {
+        padding: 5px 14px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--muted);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.15s;
+    }
+
+    .sort-btn:hover, .sort-btn.active {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+    }
+
+    /* ── Student Table ──────────────────── */
+    .student-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .student-table th {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--muted);
+        padding: 12px 20px;
+        background: var(--bg);
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+    }
+
+    .student-table td {
+        padding: 13px 20px;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.875rem;
+        vertical-align: middle;
+    }
+
+    .student-table tr:last-child td { border-bottom: none; }
+
+    .student-table tr {
+        transition: background 0.15s;
+    }
+
+    .student-table tr:hover td {
+        background: #f8faff;
+    }
+
+    .student-roll {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--accent);
+    }
+
+    .student-name {
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .student-email {
+        font-size: 0.72rem;
+        color: var(--muted);
+        margin-top: 2px;
+    }
+
+    /* ── Percentage Bar ─────────────────── */
+    .pct-cell {
+        min-width: 160px;
+    }
+
+    .pct-bar-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .pct-bar-track {
+        flex: 1;
+        height: 6px;
+        border-radius: 3px;
+        background: var(--border);
+        overflow: hidden;
+    }
+
+    .pct-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.8s ease;
+    }
+
+    .pct-label {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.8rem;
+        font-weight: 600;
+        min-width: 42px;
+        text-align: right;
+    }
+
+    .pct-good  .pct-bar-fill { background: var(--good); }
+    .pct-good  .pct-label    { color: var(--good); }
+    .pct-warn  .pct-bar-fill { background: var(--warn); }
+    .pct-warn  .pct-label    { color: var(--warn); }
+    .pct-bad   .pct-bar-fill { background: var(--bad); }
+    .pct-bad   .pct-label    { color: var(--bad); }
+
+    /* ── Status Badge ───────────────────── */
+    .status-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+
+    .chip-good    { background: var(--good-bg); color: var(--good); }
+    .chip-warning { background: var(--warn-bg); color: var(--warn); }
+    .chip-danger  { background: var(--bad-bg);  color: var(--bad); }
+
+    /* ── Subject Mini Dots ──────────────── */
+    .subject-dots {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+
+    .sdot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: transform 0.15s;
+    }
+
+    .sdot:hover { transform: scale(1.5); }
+
+    /* ── Subject Summary Table ──────────── */
+    .subj-table th, .subj-table td {
+        padding: 11px 20px;
+        font-size: 0.845rem;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+    }
+
+    .subj-table th {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--muted);
+        background: var(--bg);
+    }
+
+    .subj-table tr:last-child td { border-bottom: none; }
+
+    .subj-code {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--accent);
+    }
+
+    /* ── Search Box ─────────────────────── */
+    .search-input {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 7px 14px 7px 36px;
+        font-size: 0.82rem;
+        background: var(--bg);
+        color: var(--text);
+        outline: none;
+        transition: border-color 0.2s;
+        width: 220px;
+    }
+
+    .search-input:focus { border-color: var(--accent); background: white; }
+
+    .search-wrap {
+        position: relative;
+        display: inline-block;
+    }
+
+    .search-wrap i {
+        position: absolute;
+        left: 11px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--muted);
+        font-size: 0.8rem;
+    }
+
+    /* ── Empty state ────────────────────── */
+    .empty-state {
+        text-align: center;
+        padding: 50px 20px;
+        color: var(--muted);
+    }
+
+    /* ── Responsive ─────────────────────── */
+    @media (max-width: 1000px) {
+        .stats-row { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (max-width: 640px) {
+        .stats-row { grid-template-columns: repeat(2, 1fr); }
+        .student-table { font-size: 0.78rem; }
+        .pct-cell { min-width: 100px; }
+    }
+</style>
+{% endblock %}
+
+
+{% block content %}
+
+<!-- ── Banner ───────────────────────────────────── -->
+<div class="report-banner" data-code="{{ section.code }}">
+    <div class="banner-label">Section Report</div>
+    <h1 class="banner-title">{{ section.name }}</h1>
+    <div class="banner-sub">Academic Year {{ section.academic_year }}</div>
+    <div class="banner-meta">
+        <span class="meta-chip">
+            <i class="fas fa-tag me-1"></i>{{ section.code }}
+        </span>
+        <span class="meta-chip">
+            <i class="fas fa-layer-group me-1"></i>Semester {{ section.semester }}
+        </span>
+        <span class="meta-chip">
+            <i class="fas fa-users me-1"></i>{{ total_students }} Students
+        </span>
+        <span class="meta-chip">
+            <i class="fas fa-chalkboard me-1"></i>{{ total_sessions }} Sessions
+        </span>
+    </div>
+</div>
+
+<!-- ── Stat Tiles ────────────────────────────────── -->
+<div class="stats-row">
+    <div class="stat-tile">
+        <div class="stat-tile-label">Students</div>
+        <div class="stat-tile-value">{{ total_students }}</div>
+        <div class="stat-tile-sub">enrolled</div>
+        <div class="tile-accent" style="background:#2563eb;"></div>
+    </div>
+
+    <div class="stat-tile">
+        <div class="stat-tile-label">Avg Attendance</div>
+        <div class="stat-tile-value"
+             style="color:{% if avg_percentage >= 75 %}var(--good){% elif avg_percentage >= 50 %}var(--warn){% else %}var(--bad){% endif %};">
+            {{ avg_percentage }}%
+        </div>
+        <div class="stat-tile-sub">section average</div>
+        <div class="tile-accent"
+             style="background:{% if avg_percentage >= 75 %}var(--good){% elif avg_percentage >= 50 %}var(--warn){% else %}var(--bad){% endif %};"></div>
+    </div>
+
+    <div class="stat-tile">
+        <div class="stat-tile-label">Good Standing</div>
+        <div class="stat-tile-value" style="color:var(--good);">{{ good_count }}</div>
+        <div class="stat-tile-sub">≥ 75%</div>
+        <div class="tile-accent" style="background:var(--good);"></div>
+    </div>
+
+    <div class="stat-tile">
+        <div class="stat-tile-label">At Risk</div>
+        <div class="stat-tile-value" style="color:var(--warn);">{{ warning_count }}</div>
+        <div class="stat-tile-sub">50 – 74%</div>
+        <div class="tile-accent" style="background:var(--warn);"></div>
+    </div>
+
+    <div class="stat-tile">
+        <div class="stat-tile-label">Critical</div>
+        <div class="stat-tile-value" style="color:var(--bad);">{{ danger_count }}</div>
+        <div class="stat-tile-sub">below 50%</div>
+        <div class="tile-accent" style="background:var(--bad);"></div>
+    </div>
+</div>
+
+<!-- ── Subject Summary ───────────────────────────── -->
+{% if subject_stats %}
+<div class="panel">
+    <div class="panel-head">
+        <h2 class="panel-title">
+            <i class="fas fa-book me-2"></i>Subject-wise Overview
+        </h2>
+    </div>
+    <table class="subj-table" style="width:100%; border-collapse:collapse;">
+        <thead>
+            <tr>
+                <th>Subject</th>
+                <th>Sessions</th>
+                <th>Present</th>
+                <th>Absent</th>
+                <th>Avg Attendance</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in subject_stats %}
+            <tr>
+                <td>
+                    <span class="subj-code">{{ item.subject.code }}</span>
+                    <div style="font-size:0.8rem; color:var(--text); margin-top:2px;">
+                        {{ item.subject.name }}
+                    </div>
+                </td>
+                <td class="mono" style="font-size:0.85rem;">{{ item.sessions }}</td>
+                <td>
+                    <span style="color:var(--good); font-weight:600;">
+                        {{ item.present }}
+                    </span>
+                </td>
+                <td>
+                    <span style="color:var(--bad); font-weight:600;">
+                        {{ item.total|add:"-0" }}
+                        {# absent = total - present shown below #}
+                    </span>
+                </td>
+                <td>
+                    <div class="pct-bar-wrap
+                        {% if item.percentage >= 75 %}pct-good
+                        {% elif item.percentage >= 50 %}pct-warn
+                        {% else %}pct-bad{% endif %}">
+                        <div class="pct-bar-track" style="flex:1;">
+                            <div class="pct-bar-fill"
+                                 style="width:{{ item.percentage }}%;"></div>
+                        </div>
+                        <span class="pct-label">{{ item.percentage }}%</span>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- ── Student Table ─────────────────────────────── -->
+<div class="panel">
+    <div class="panel-head">
+        <h2 class="panel-title">
+            <i class="fas fa-users me-2"></i>Student Attendance
+        </h2>
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+
+            <!-- Search -->
+            <div class="search-wrap">
+                <i class="fas fa-search"></i>
+                <input type="text"
+                       class="search-input"
+                       id="studentSearch"
+                       placeholder="Search name or roll…">
+            </div>
+
+            <!-- Sort -->
+            <div class="sort-group">
+                <a href="?sort=percentage_asc"
+                   class="sort-btn {% if sort_by == 'percentage_asc' %}active{% endif %}">
+                   ↑ %
+                </a>
+                <a href="?sort=percentage_desc"
+                   class="sort-btn {% if sort_by == 'percentage_desc' %}active{% endif %}">
+                   ↓ %
+                </a>
+                <a href="?sort=name"
+                   class="sort-btn {% if sort_by == 'name' %}active{% endif %}">
+                   Name
+                </a>
+                <a href="?sort=roll"
+                   class="sort-btn {% if sort_by == 'roll' %}active{% endif %}">
+                   Roll
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if student_stats %}
+    <div style="overflow-x:auto;">
+        <table class="student-table" id="studentTable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Roll No.</th>
+                    <th>Student</th>
+                    <th>Present</th>
+                    <th>Absent</th>
+                    <th>Total</th>
+                    <th class="pct-cell">Attendance</th>
+                    <th>Status</th>
+                    {% if subjects_in_section %}
+                    <th>By Subject</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody id="studentTableBody">
+                {% for item in student_stats %}
+                <tr class="student-row"
+                    data-name="{{ item.student.user.get_full_name|lower }}"
+                    data-roll="{{ item.student.roll_number|lower }}">
+
+                    <td style="color:var(--muted); font-size:0.75rem;">
+                        {{ forloop.counter }}
+                    </td>
+
+                    <td>
+                        <span class="student-roll mono">
+                            {{ item.student.roll_number }}
+                        </span>
+                    </td>
+
+                    <td>
+                        <div class="student-name">
+                            {{ item.student.user.get_full_name }}
+                        </div>
+                        <div class="student-email">
+                            {{ item.student.user.email }}
+                        </div>
+                    </td>
+
+                    <td>
+                        <span style="color:var(--good); font-weight:700;">
+                            {{ item.present }}
+                        </span>
+                    </td>
+
+                    <td>
+                        <span style="color:var(--bad); font-weight:700;">
+                            {{ item.absent }}
+                        </span>
+                    </td>
+
+                    <td style="color:var(--muted);">{{ item.total }}</td>
+
+                    <td class="pct-cell">
+                        <div class="pct-bar-wrap
+                            {% if item.status == 'good' %}pct-good
+                            {% elif item.status == 'warning' %}pct-warn
+                            {% else %}pct-bad{% endif %}">
+                            <div class="pct-bar-track">
+                                <div class="pct-bar-fill"
+                                     style="width:{{ item.percentage }}%;">
+                                </div>
+                            </div>
+                            <span class="pct-label">{{ item.percentage }}%</span>
+                        </div>
+                    </td>
+
+                    <td>
+                        {% if item.status == 'good' %}
+                            <span class="status-chip chip-good">
+                                <i class="fas fa-check-circle"></i> Good
+                            </span>
+                        {% elif item.status == 'warning' %}
+                            <span class="status-chip chip-warning">
+                                <i class="fas fa-exclamation-circle"></i> At Risk
+                            </span>
+                        {% else %}
+                            <span class="status-chip chip-danger">
+                                <i class="fas fa-times-circle"></i> Critical
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    {% if subjects_in_section %}
+                    <td>
+                        <div class="subject-dots">
+                            {% for sb in item.subject_breakdown %}
+                            <span class="sdot"
+                                  style="background:
+                                    {% if sb.percentage >= 75 %}var(--good)
+                                    {% elif sb.percentage >= 50 %}var(--warn)
+                                    {% else %}var(--bad){% endif %};"
+                                  title="{{ sb.subject.code }}: {{ sb.percentage }}%">
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </td>
+                    {% endif %}
+
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- No results row (shown by JS) -->
+    <div id="noResults" class="empty-state" style="display:none;">
+        <i class="fas fa-search fa-2x mb-3 d-block opacity-25"></i>
+        No students match your search.
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-users fa-3x mb-3 d-block opacity-20"></i>
+        <p>No students enrolled in this section.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ── Back Button ───────────────────────────────── -->
+<div class="mt-2 mb-4">
+    <a href="{% url 'attendance:management_dashboard' %}"
+       style="color:var(--muted); font-size:0.85rem; text-decoration:none;
+              font-weight:500; display:inline-flex; align-items:center; gap:6px;">
+        <i class="fas fa-arrow-left"></i> Back to Dashboard
+    </a>
+</div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ── Animate bars on load ──────────────────
+    document.querySelectorAll('.pct-bar-fill').forEach(bar => {
+        const target = bar.style.width;
+        bar.style.width = '0%';
+        setTimeout(() => { bar.style.width = target; }, 200);
+    });
+
+    // ── Staggered row fade-in ─────────────────
+    document.querySelectorAll('.student-row, .stat-tile').forEach((el, i) => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(8px)';
+        el.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        setTimeout(() => {
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+        }, 30 * i);
+    });
+
+    // ── Live search ───────────────────────────
+    const searchInput  = document.getElementById('studentSearch');
+    const rows         = document.querySelectorAll('.student-row');
+    const noResults    = document.getElementById('noResults');
+
+    searchInput.addEventListener('input', function () {
+        const term = this.value.toLowerCase().trim();
+        let visible = 0;
+
+        rows.forEach(row => {
+            const name = row.dataset.name;
+            const roll = row.dataset.roll;
+            const match = name.includes(term) || roll.includes(term);
+            row.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+
+        noResults.style.display = visible === 0 ? 'block' : 'none';
+    });
+});
+</script>
+{% endblock %}
+```
+
+---
+
+## ✅ **Features at a Glance**
+
+### **Banner**
+✅ Section name, code, semester, academic year, student count, session count as meta chips
+✅ Large ghost watermark of section code in background
+
+### **Stat Tiles**
+✅ Total students, average attendance %, good/at-risk/critical counts
+✅ Color-coded bottom accent bar per tile
+✅ Hover lift animation
+
+### **Subject Overview Panel**
+✅ Per-subject session count, present count, and average attendance
+✅ Animated progress bar per subject
+
+### **Student Table**
+✅ Roll number, name, email, present/absent/total counts
+✅ Animated percentage bar per student
+✅ Status chip — Good / At Risk / Critical
+✅ Subject dot row — colored dots per subject attendance
+✅ Hover tooltips on dots showing `SUBJECT_CODE: XX%`
+✅ Live search by name or roll number (no page reload)
+✅ Sort by: % ascending, % descending, name, roll number
+
+---
+
+## 🧪 **Test It**
+
+Login as management and click any section in the sidebar, or go directly to:
+```
+http://127.0.0.1:8000/attendance/management/section/1/

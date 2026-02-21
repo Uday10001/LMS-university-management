@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+{% block title %}Request Timetable Change{% endblock %}
+
+{% block extra_css %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+    * { font-family: 'Outfit', sans-serif; }
+    :root {
+        --bg:#f4f6fb; --surface:#fff; --border:#e8edf5;
+        --text:#0f1628; --muted:#7a869a; --accent:#4f46e5;
+        --radius:12px; --shadow:0 2px 12px rgba(0,0,0,0.07);
+    }
+    body { background:var(--bg); }
+
+    .page-header {
+        background:var(--text); color:white;
+        border-radius:var(--radius); padding:22px 28px;
+        margin-bottom:22px;
+    }
+    .page-header h1 { font-size:1.4rem; font-weight:800; margin:0; }
+    .page-header p  { color:rgba(255,255,255,0.5); margin:4px 0 0; font-size:0.85rem; }
+
+    .form-card {
+        background:var(--surface); border-radius:var(--radius);
+        border:1px solid var(--border); box-shadow:var(--shadow);
+        padding:28px; max-width:680px;
+    }
+    .form-label {
+        font-size:0.78rem; font-weight:700;
+        text-transform:uppercase; letter-spacing:0.8px;
+        color:var(--muted); margin-bottom:6px; display:block;
+    }
+    .form-control, .form-select {
+        border:1px solid var(--border); border-radius:8px;
+        padding:9px 14px; font-size:0.875rem;
+        background:var(--bg); color:var(--text);
+        width:100%; outline:none; transition:border-color 0.2s;
+        font-family:'Outfit',sans-serif;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color:var(--accent); background:white; box-shadow:none;
+    }
+    textarea.form-control { resize:vertical; min-height:90px; }
+    .submit-btn {
+        padding:11px 28px; border-radius:10px;
+        background:var(--accent); color:white;
+        font-weight:700; font-size:0.88rem;
+        border:none; cursor:pointer; transition:opacity 0.2s;
+    }
+    .submit-btn:hover { opacity:0.85; }
+
+    /* Recent requests */
+    .requests-card {
+        background:var(--surface); border-radius:var(--radius);
+        border:1px solid var(--border); box-shadow:var(--shadow);
+        max-width:680px; margin-top:20px; overflow:hidden;
+    }
+    .req-head {
+        padding:13px 20px; border-bottom:1px solid var(--border);
+        font-size:0.72rem; font-weight:700;
+        text-transform:uppercase; letter-spacing:1px; color:var(--muted);
+    }
+    .req-row {
+        padding:13px 20px; border-bottom:1px solid var(--border);
+        display:flex; align-items:center; gap:14px;
+    }
+    .req-row:last-child { border-bottom:none; }
+    .req-type {
+        font-size:0.8rem; font-weight:600; color:var(--text);
+    }
+    .req-slot {
+        font-size:0.72rem; color:var(--muted);
+        font-family:'JetBrains Mono',monospace;
+    }
+    .status-chip {
+        padding:3px 10px; border-radius:20px;
+        font-size:0.68rem; font-weight:700; text-transform:uppercase;
+    }
+    .chip-pending  { background:#fef3c7; color:#b45309; }
+    .chip-approved { background:#d1fae5; color:#065f46; }
+    .chip-rejected { background:#fee2e2; color:#991b1b; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <h1><i class="fas fa-paper-plane me-2" style="color:#818cf8;"></i>Request Timetable Change</h1>
+    <p>Management will review your request and respond shortly.</p>
+</div>
+
+<div class="form-card">
+    <form method="POST">
+        {% csrf_token %}
+
+        <div class="mb-4">
+            <label class="form-label">Timetable Slot *</label>
+            <select name="timetable_slot" class="form-select" required>
+                <option value="">— Select a slot —</option>
+                {% for slot in my_slots %}
+                <option value="{{ slot.id }}">
+                    {{ slot.get_day_of_week_display }} |
+                    {{ slot.start_time|time:"h:i A" }}–{{ slot.end_time|time:"h:i A" }} |
+                    {{ slot.subject.code }} | {{ slot.section.code }}
+                    {% if slot.room %}| Room {{ slot.room }}{% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">Request Type *</label>
+            <select name="request_type" class="form-select" required id="requestType">
+                <option value="">— Select type —</option>
+                {% for value, label in request_types %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">Date Affected</label>
+            <input type="date" name="requested_date" class="form-control"
+                   min="{{ today|date:'Y-m-d' }}">
+            <small style="color:var(--muted); font-size:0.72rem;">
+                Which specific date needs the change? Leave blank if recurring.
+            </small>
+        </div>
+
+        <!-- Conditional fields -->
+        <div id="rescheduleFields" style="display:none;">
+            <div class="mb-4">
+                <label class="form-label">Proposed New Time</label>
+                <input type="time" name="proposed_time" class="form-control">
+            </div>
+        </div>
+
+        <div id="roomFields" style="display:none;">
+            <div class="mb-4">
+                <label class="form-label">Proposed New Room</label>
+                <input type="text" name="proposed_room" class="form-control"
+                       placeholder="e.g. B-204">
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">Reason *</label>
+            <textarea name="reason" class="form-control" required
+                      placeholder="Explain why this change is needed…"></textarea>
+        </div>
+
+        <div style="display:flex; gap:12px; align-items:center;">
+            <button type="submit" class="submit-btn">
+                <i class="fas fa-paper-plane me-2"></i>Submit Request
+            </button>
+            <a href="{% url 'attendance:teacher_timetable' %}"
+               style="font-size:0.85rem; color:var(--muted);
+                      text-decoration:none; font-weight:600;">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Recent requests -->
+{% if my_requests %}
+<div class="requests-card">
+    <div class="req-head"><i class="fas fa-history me-2"></i>My Recent Requests</div>
+    {% for req in my_requests %}
+    <div class="req-row">
+        <div style="flex:1; min-width:0;">
+            <div class="req-type">{{ req.get_request_type_display }}</div>
+            <div class="req-slot">
+                {{ req.timetable_slot.get_day_of_week_display }} |
+                {{ req.timetable_slot.subject.code }} |
+                {{ req.timetable_slot.section.code }}
+            </div>
+            {% if req.management_note %}
+            <div style="font-size:0.72rem; color:var(--muted); margin-top:3px;">
+                "{{ req.management_note }}"
+            </div>
+            {% endif %}
+        </div>
+        <div style="text-align:right;">
+            <span class="status-chip
+                {% if req.status == 'pending' %}chip-pending
+                {% elif req.status == 'approved' %}chip-approved
+                {% else %}chip-rejected{% endif %}">
+                {{ req.status }}
+            </span>
+            <div style="font-size:0.68rem; color:var(--muted); margin-top:4px;">
+                {{ req.created_at|date:"M d, Y" }}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Show/hide conditional fields based on request type
+document.getElementById('requestType').addEventListener('change', function () {
+    const val = this.value;
+    document.getElementById('rescheduleFields').style.display =
+        val === 'reschedule' ? 'block' : 'none';
+    document.getElementById('roomFields').style.display =
+        val === 'room' ? 'block' : 'none';
+});
+</script>
+{% endblock %}

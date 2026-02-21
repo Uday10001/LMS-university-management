@@ -1,0 +1,611 @@
+{% extends 'base.html' %}
+
+{% block title %}My Attendance{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 25px 30px;
+        margin-bottom: 25px;
+    }
+    .stat-card {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+    }
+    .stat-icon {
+        width: 55px;
+        height: 55px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+    }
+    .filter-card {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        margin-bottom: 25px;
+    }
+    .attendance-table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #6c757d;
+        border-top: none;
+    }
+    .attendance-table td {
+        vertical-align: middle;
+        padding: 12px 15px;
+    }
+    .status-badge-present {
+        background: #d4edda;
+        color: #155724;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.82rem;
+    }
+    .status-badge-absent {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.82rem;
+    }
+    .subject-pill {
+        background: #e8f0fe;
+        color: #1a73e8;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+    .progress-bar-custom {
+        height: 8px;
+        border-radius: 4px;
+    }
+    .subject-summary-card {
+        border-radius: 10px;
+        border-left: 4px solid;
+        transition: transform 0.2s;
+        cursor: pointer;
+    }
+    .subject-summary-card:hover {
+        transform: translateX(4px);
+    }
+    .calendar-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+    .empty-state i {
+        font-size: 4rem;
+        color: #dee2e6;
+        margin-bottom: 15px;
+    }
+    .table-wrapper {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    .pagination .page-link {
+        border-radius: 8px;
+        margin: 0 3px;
+        color: #667eea;
+    }
+    .pagination .page-item.active .page-link {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: transparent;
+    }
+    .toggle-view-btn.active {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+    .remarks-badge {
+        background: #fff3cd;
+        color: #856404;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.78rem;
+    }
+    @media (max-width: 768px) {
+        .stat-card { margin-bottom: 15px; }
+        .page-header { padding: 20px; }
+    }
+</style>
+{% endblock %}
+
+{% block sidebar %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:student_dashboard' %}">
+            <i class="fas fa-home"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'attendance:student_attendance_detail' %}">
+            <i class="fas fa-calendar-check"></i> My Attendance
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'profile' %}">
+            <i class="fas fa-user"></i> My Profile
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            <h2 class="mb-1">
+                <i class="fas fa-calendar-check"></i> My Attendance
+            </h2>
+            <p class="mb-0 opacity-75">
+                {{ student.roll_number }} &bull;
+                {{ student.section.name }} &bull;
+                Semester {{ student.section.semester }}
+            </p>
+        </div>
+        <div class="col-auto text-end">
+            <div style="font-size: 2.2rem; font-weight: bold;">
+                {{ overall_stats.overall_percentage }}%
+            </div>
+            <small class="opacity-75">Overall Attendance</small>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Stats Row -->
+<div class="row mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card stat-card p-3">
+            <div class="d-flex align-items-center">
+                <div class="stat-icon bg-primary bg-opacity-10 me-3">
+                    <i class="fas fa-calendar-alt text-primary"></i>
+                </div>
+                <div>
+                    <div class="text-muted small">Total Classes</div>
+                    <div class="fw-bold fs-4">{{ overall_stats.total }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card p-3">
+            <div class="d-flex align-items-center">
+                <div class="stat-icon bg-success bg-opacity-10 me-3">
+                    <i class="fas fa-check-circle text-success"></i>
+                </div>
+                <div>
+                    <div class="text-muted small">Present</div>
+                    <div class="fw-bold fs-4 text-success">{{ overall_stats.present }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card p-3">
+            <div class="d-flex align-items-center">
+                <div class="stat-icon bg-danger bg-opacity-10 me-3">
+                    <i class="fas fa-times-circle text-danger"></i>
+                </div>
+                <div>
+                    <div class="text-muted small">Absent</div>
+                    <div class="fw-bold fs-4 text-danger">{{ overall_stats.absent }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card p-3">
+            <div class="d-flex align-items-center">
+                <div class="stat-icon me-3
+                    {% if overall_stats.overall_percentage >= 75 %}bg-success bg-opacity-10
+                    {% elif overall_stats.overall_percentage >= 50 %}bg-warning bg-opacity-10
+                    {% else %}bg-danger bg-opacity-10{% endif %}">
+                    <i class="fas fa-chart-pie
+                        {% if overall_stats.overall_percentage >= 75 %}text-success
+                        {% elif overall_stats.overall_percentage >= 50 %}text-warning
+                        {% else %}text-danger{% endif %}">
+                    </i>
+                </div>
+                <div>
+                    <div class="text-muted small">Percentage</div>
+                    <div class="fw-bold fs-4
+                        {% if overall_stats.overall_percentage >= 75 %}text-success
+                        {% elif overall_stats.overall_percentage >= 50 %}text-warning
+                        {% else %}text-danger{% endif %}">
+                        {{ overall_stats.overall_percentage }}%
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Requirement Alert -->
+{% if overall_stats.overall_percentage < 75 %}
+<div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
+    <i class="fas fa-exclamation-triangle me-3 fs-4"></i>
+    <div>
+        <strong>Warning:</strong> Your attendance is below the required 75%.
+        You need to attend
+        <strong>{{ overall_stats.classes_needed }} more classes</strong>
+        to reach 75% attendance.
+    </div>
+</div>
+{% elif overall_stats.overall_percentage < 85 %}
+<div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+    <i class="fas fa-info-circle me-3 fs-4"></i>
+    <div>
+        <strong>Note:</strong> You can afford to miss
+        <strong>{{ overall_stats.can_miss }} more classes</strong>
+        while staying above 75%.
+    </div>
+</div>
+{% else %}
+<div class="alert alert-success d-flex align-items-center mb-4" role="alert">
+    <i class="fas fa-check-circle me-3 fs-4"></i>
+    <div>
+        <strong>Great!</strong> Your attendance is excellent.
+        You can miss up to
+        <strong>{{ overall_stats.can_miss }} more classes</strong>
+        while staying above 75%.
+    </div>
+</div>
+{% endif %}
+
+<!-- Subject Summary -->
+<div class="card filter-card mb-4">
+    <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+        <h5 class="text-primary mb-3">
+            <i class="fas fa-book-open"></i> Subject-wise Summary
+        </h5>
+    </div>
+    <div class="card-body pt-2">
+        <div class="row">
+            {% for item in subjects_attendance %}
+            <div class="col-md-6 mb-3">
+                <div class="subject-summary-card card p-3
+                    {% if item.percentage >= 75 %}border-success
+                    {% elif item.percentage >= 50 %}border-warning
+                    {% else %}border-danger{% endif %}"
+                    onclick="filterBySubject('{{ item.subject.id }}')">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <span class="subject-pill">{{ item.subject.code }}</span>
+                            <div class="fw-bold mt-1">{{ item.subject.name }}</div>
+                            <small class="text-muted">
+                                {{ item.present }} present &bull;
+                                {{ item.absent }} absent &bull;
+                                {{ item.total }} total
+                            </small>
+                        </div>
+                        <span class="fs-5 fw-bold
+                            {% if item.percentage >= 75 %}text-success
+                            {% elif item.percentage >= 50 %}text-warning
+                            {% else %}text-danger{% endif %}">
+                            {{ item.percentage }}%
+                        </span>
+                    </div>
+                    <div class="progress progress-bar-custom">
+                        <div class="progress-bar
+                            {% if item.percentage >= 75 %}bg-success
+                            {% elif item.percentage >= 50 %}bg-warning
+                            {% else %}bg-danger{% endif %}"
+                            style="width: {{ item.percentage }}%">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center text-muted py-3">
+                No subject data available.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card filter-card">
+    <div class="card-header bg-white border-bottom pt-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="text-primary mb-0">
+                <i class="fas fa-filter"></i> Filter Records
+            </h5>
+            <div>
+                <button class="btn btn-sm btn-outline-secondary toggle-view-btn active"
+                        id="tableViewBtn" onclick="switchView('table')">
+                    <i class="fas fa-table"></i> Table
+                </button>
+                <button class="btn btn-sm btn-outline-secondary toggle-view-btn ms-1"
+                        id="cardViewBtn" onclick="switchView('card')">
+                    <i class="fas fa-th-large"></i> Cards
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <form method="GET" id="filterForm">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Subject</label>
+                    <select name="subject" class="form-select" id="subjectFilter">
+                        <option value="">All Subjects</option>
+                        {% for item in subjects_attendance %}
+                        <option value="{{ item.subject.id }}"
+                            {% if request.GET.subject == item.subject.id|stringformat:"s" %}selected{% endif %}>
+                            {{ item.subject.code }} - {{ item.subject.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All</option>
+                        <option value="present"
+                            {% if request.GET.status == 'present' %}selected{% endif %}>
+                            Present
+                        </option>
+                        <option value="absent"
+                            {% if request.GET.status == 'absent' %}selected{% endif %}>
+                            Absent
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">From Date</label>
+                    <input type="date" name="date_from" class="form-control"
+                           value="{{ request.GET.date_from }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">To Date</label>
+                    <input type="date" name="date_to" class="form-control"
+                           value="{{ request.GET.date_to }}">
+                </div>
+                <div class="col-md-3 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary flex-fill">
+                        <i class="fas fa-search"></i> Filter
+                    </button>
+                    <a href="{% url 'attendance:student_attendance_detail' %}"
+                       class="btn btn-outline-secondary">
+                        <i class="fas fa-redo"></i>
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Results Count -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <span class="text-muted small">
+        Showing <strong>{{ attendance_records|length }}</strong> records
+        {% if request.GET.subject or request.GET.status or request.GET.date_from %}
+            (filtered)
+        {% endif %}
+    </span>
+    <div>
+        <span class="calendar-dot bg-success me-1"></span>
+        <small class="text-muted me-3">Present</small>
+        <span class="calendar-dot bg-danger me-1"></span>
+        <small class="text-muted">Absent</small>
+    </div>
+</div>
+
+<!-- TABLE VIEW -->
+<div id="tableView">
+    {% if attendance_records %}
+    <div class="table-wrapper">
+        <table class="table table-hover attendance-table mb-0">
+            <thead>
+                <tr>
+                    <th class="ps-4">#</th>
+                    <th>Date</th>
+                    <th>Subject</th>
+                    <th>Teacher</th>
+                    <th>Time</th>
+                    <th>Topic</th>
+                    <th>Status</th>
+                    <th>Remarks</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in attendance_records %}
+                <tr>
+                    <td class="ps-4 text-muted small">{{ forloop.counter }}</td>
+                    <td>
+                        <div class="fw-bold">
+                            {{ record.class_session.date|date:"M d, Y" }}
+                        </div>
+                        <small class="text-muted">
+                            {{ record.class_session.date|date:"l" }}
+                        </small>
+                    </td>
+                    <td>
+                        <span class="subject-pill">
+                            {{ record.class_session.subject.code }}
+                        </span>
+                        <div class="small text-muted mt-1">
+                            {{ record.class_session.subject.name }}
+                        </div>
+                    </td>
+                    <td>
+                        {{ record.class_session.teacher.user.get_full_name }}
+                    </td>
+                    <td class="small text-muted">
+                        {{ record.class_session.start_time|time:"h:i A" }}
+                        <br>
+                        {{ record.class_session.end_time|time:"h:i A" }}
+                    </td>
+                    <td>
+                        {% if record.class_session.topic %}
+                            <small>{{ record.class_session.topic|truncatewords:6 }}</small>
+                        {% else %}
+                            <small class="text-muted">-</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if record.is_present %}
+                            <span class="status-badge-present">
+                                <i class="fas fa-check-circle me-1"></i> Present
+                            </span>
+                        {% else %}
+                            <span class="status-badge-absent">
+                                <i class="fas fa-times-circle me-1"></i> Absent
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if record.remarks %}
+                            <span class="remarks-badge">{{ record.remarks }}</span>
+                        {% else %}
+                            <span class="text-muted small">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-search-minus"></i>
+        <h5 class="text-muted">No Records Found</h5>
+        <p class="text-muted">Try adjusting your filters to see more results.</p>
+        <a href="{% url 'attendance:student_attendance_detail' %}"
+           class="btn btn-outline-primary">
+            <i class="fas fa-redo"></i> Clear Filters
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- CARD VIEW (hidden by default) -->
+<div id="cardView" style="display: none;">
+    {% if attendance_records %}
+    <div class="row">
+        {% for record in attendance_records %}
+        <div class="col-md-4 col-sm-6 mb-3">
+            <div class="card h-100 border-0 shadow-sm
+                {% if record.is_present %}border-start border-success border-3
+                {% else %}border-start border-danger border-3{% endif %}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="subject-pill">{{ record.class_session.subject.code }}</span>
+                        {% if record.is_present %}
+                            <span class="status-badge-present">
+                                <i class="fas fa-check-circle"></i> Present
+                            </span>
+                        {% else %}
+                            <span class="status-badge-absent">
+                                <i class="fas fa-times-circle"></i> Absent
+                            </span>
+                        {% endif %}
+                    </div>
+                    <div class="fw-bold">{{ record.class_session.subject.name }}</div>
+                    <div class="text-muted small mt-2">
+                        <i class="fas fa-calendar me-1"></i>
+                        {{ record.class_session.date|date:"M d, Y" }}
+                        ({{ record.class_session.date|date:"l" }})
+                    </div>
+                    <div class="text-muted small">
+                        <i class="fas fa-clock me-1"></i>
+                        {{ record.class_session.start_time|time:"h:i A" }} -
+                        {{ record.class_session.end_time|time:"h:i A" }}
+                    </div>
+                    <div class="text-muted small">
+                        <i class="fas fa-chalkboard-teacher me-1"></i>
+                        {{ record.class_session.teacher.user.get_full_name }}
+                    </div>
+                    {% if record.class_session.topic %}
+                    <div class="text-muted small mt-1">
+                        <i class="fas fa-lightbulb me-1"></i>
+                        {{ record.class_session.topic|truncatewords:8 }}
+                    </div>
+                    {% endif %}
+                    {% if record.remarks %}
+                    <div class="mt-2">
+                        <span class="remarks-badge">{{ record.remarks }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-search-minus"></i>
+        <h5 class="text-muted">No Records Found</h5>
+        <p class="text-muted">Try adjusting your filters.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Switch between table and card view
+function switchView(view) {
+    const tableView = document.getElementById('tableView');
+    const cardView = document.getElementById('cardView');
+    const tableBtn = document.getElementById('tableViewBtn');
+    const cardBtn = document.getElementById('cardViewBtn');
+
+    if (view === 'table') {
+        tableView.style.display = 'block';
+        cardView.style.display = 'none';
+        tableBtn.classList.add('active');
+        cardBtn.classList.remove('active');
+        localStorage.setItem('attendanceView', 'table');
+    } else {
+        tableView.style.display = 'none';
+        cardView.style.display = 'block';
+        cardBtn.classList.add('active');
+        tableBtn.classList.remove('active');
+        localStorage.setItem('attendanceView', 'card');
+    }
+}
+
+// Filter by subject (called from subject summary cards)
+function filterBySubject(subjectId) {
+    document.getElementById('subjectFilter').value = subjectId;
+    document.getElementById('filterForm').submit();
+}
+
+// Restore last view preference
+document.addEventListener('DOMContentLoaded', function() {
+    const savedView = localStorage.getItem('attendanceView');
+    if (savedView === 'card') {
+        switchView('card');
+    }
+});
+</script>
+{% endblock %}

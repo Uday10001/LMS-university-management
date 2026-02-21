@@ -1,26 +1,7 @@
 {% extends 'base.html' %}
 
 {% block title %}Teacher Dashboard{% endblock %}
-
-{% block sidebar %}
-<ul class="nav flex-column">
-    <li class="nav-item">
-        <a class="nav-link active" href="{% url 'attendance:teacher_dashboard' %}">
-            <i class="fas fa-home"></i> Dashboard
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{% url 'attendance:create_session' %}">
-            <i class="fas fa-plus-circle"></i> Create Session
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{% url 'attendance:teacher_sessions_list' %}">
-            <i class="fas fa-list"></i> My Sessions
-        </a>
-    </li>
-</ul>
-{% endblock %}
+    
 
 {% block content %}
 <h1 class="mb-4">Teacher Dashboard</h1>

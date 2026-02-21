@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% block title %}Review Change Request{% endblock %}
+
+{% block extra_css %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+    * { font-family: 'Outfit', sans-serif; }
+    :root {
+        --bg:#f4f6fb; --surface:#fff; --border:#e8edf5;
+        --text:#0f1628; --muted:#7a869a; --accent:#2563eb;
+        --good:#059669; --bad:#dc2626;
+        --radius:12px; --shadow:0 2px 12px rgba(0,0,0,0.07);
+    }
+    body { background:var(--bg); }
+
+    .review-card {
+        background:var(--surface); border-radius:var(--radius);
+        border:1px solid var(--border); box-shadow:var(--shadow);
+        max-width:600px; overflow:hidden;
+    }
+    .review-header {
+        background:var(--text); color:white; padding:22px 26px;
+    }
+    .review-header h1 { font-size:1.3rem; font-weight:800; margin:0; }
+    .review-header p  { color:rgba(255,255,255,0.5); margin:4px 0 0; font-size:0.82rem; }
+
+    .review-body { padding:24px 26px; }
+    .detail-row {
+        display:flex; gap:12px; padding:10px 0;
+        border-bottom:1px solid var(--border);
+        font-size:0.875rem;
+    }
+    .detail-row:last-child { border-bottom:none; }
+    .detail-label {
+        font-size:0.72rem; font-weight:700;
+        text-transform:uppercase; letter-spacing:0.8px;
+        color:var(--muted); min-width:130px;
+    }
+    .detail-value { color:var(--text); font-weight:500; }
+
+    .note-area {
+        border:1px solid var(--border); border-radius:8px;
+        padding:10px 14px; font-size:0.875rem;
+        background:var(--bg); color:var(--text);
+        width:100%; outline:none; resize:vertical;
+        min-height:80px; transition:border-color 0.2s;
+        font-family:'Outfit',sans-serif; margin-top:16px;
+    }
+    .note-area:focus { border-color:var(--accent); background:white; }
+
+    .action-row { display:flex; gap:12px; margin-top:18px; }
+    .approve-btn {
+        flex:1; padding:11px; border-radius:10px;
+        background:var(--good); color:white;
+        font-weight:700; font-size:0.875rem;
+        border:none; cursor:pointer; transition:opacity 0.2s;
+    }
+    .approve-btn:hover { opacity:0.85; }
+    .reject-btn {
+        flex:1; padding:11px; border-radius:10px;
+        background:var(--bad); color:white;
+        font-weight:700; font-size:0.875rem;
+        border:none; cursor:pointer; transition:opacity 0.2s;
+    }
+    .reject-btn:hover { opacity:0.85; }
+    .cancel-link {
+        align-self:center; font-size:0.82rem;
+        color:var(--muted); text-decoration:none; font-weight:600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="review-card">
+    <div class="review-header">
+        <h1><i class="fas fa-clipboard-check me-2"></i>Review Request</h1>
+        <p>Submitted {{ change_request.created_at|date:"M d, Y h:i A" }}</p>
+    </div>
+
+    <div class="review-body">
+        <div class="detail-row">
+            <span class="detail-label">Teacher</span>
+            <span class="detail-value">
+                {{ change_request.teacher.user.get_full_name }}
+                ({{ change_request.teacher.employee_id }})
+            </span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Request Type</span>
+            <span class="detail-value">
+                {{ change_request.get_request_type_display }}
+            </span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Slot</span>
+            <span class="detail-value"
+                  style="font-family:'JetBrains Mono',monospace; font-size:0.82rem;">
+                {{ change_request.timetable_slot.get_day_of_week_display }} |
+                {{ change_request.timetable_slot.start_time|time:"h:i A" }} –
+                {{ change_request.timetable_slot.end_time|time:"h:i A" }} |
+                {{ change_request.timetable_slot.subject.code }} |
+                {{ change_request.timetable_slot.section.code }}
+            </span>
+        </div>
+        {% if change_request.requested_date %}
+        <div class="detail-row">
+            <span class="detail-label">Affected Date</span>
+            <span class="detail-value">
+                {{ change_request.requested_date|date:"M d, Y" }}
+            </span>
+        </div>
+        {% endif %}
+        {% if change_request.proposed_time %}
+        <div class="detail-row">
+            <span class="detail-label">Proposed Time</span>
+            <span class="detail-value">
+                {{ change_request.proposed_time|time:"h:i A" }}
+            </span>
+        </div>
+        {% endif %}
+        {% if change_request.proposed_room %}
+        <div class="detail-row">
+            <span class="detail-label">Proposed Room</span>
+            <span class="detail-value">{{ change_request.proposed_room }}</span>
+        </div>
+        {% endif %}
+        <div class="detail-row">
+            <span class="detail-label">Reason</span>
+            <span class="detail-value">{{ change_request.reason }}</span>
+        </div>
+
+        <!-- Action form -->
+        <form method="POST">
+            {% csrf_token %}
+            <textarea name="management_note" class="note-area"
+                      placeholder="Optional note to teacher (reason for approval/rejection)…">
+            </textarea>
+            <div class="action-row">
+                <button type="submit" name="action" value="approve"
+                        class="approve-btn">
+                    <i class="fas fa-check me-2"></i>Approve
+                </button>
+                <button type="submit" name="action" value="reject"
+                        class="reject-btn">
+                    <i class="fas fa-times me-2"></i>Reject
+                </button>
+                <a href="{% url 'attendance:management_timetable' %}"
+                   class="cancel-link">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

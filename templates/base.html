@@ -9,120 +9,443 @@
     <style>
         body {
             background-color: #f8f9fa;
+            min-height: 100vh;
         }
+
+        /* ── Navbar ───────────────────── */
         .navbar-brand {
-            font-weight: bold;
-            font-size: 1.3rem;
+            font-weight: 700;
+            font-size: 1.2rem;
+            letter-spacing: 0.3px;
         }
+
+        .role-badge {
+            font-size: 0.7rem;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
+        /* ── Sidebar ──────────────────── */
         .sidebar {
-            min-height: calc(100vh - 56px);
-            background-color: #343a40;
+    min-height: calc(100vh - 56px);
+    background-color: #1e2235;
+    padding: 0;
+    position: sticky;
+    top: 56px;        /* sits just below the sticky navbar */
+    height: calc(100vh - 56px);
+    overflow-y: auto;
+    align-self: flex-start; /* prevents sidebar from stretching */
+}
+
+        .sidebar-section-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: #4a5280;
+            padding: 18px 20px 6px 20px;
         }
-        .sidebar a {
-            color: #adb5bd;
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            color: #9aa5ce;
             text-decoration: none;
             padding: 10px 20px;
-            display: block;
-            transition: all 0.3s;
+            font-size: 0.88rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+            margin: 1px 0;
         }
-        .sidebar a:hover, .sidebar a.active {
-            background-color: #495057;
+
+        .sidebar-link:hover {
+            background-color: #262d47;
+            color: #ffffff;
+            border-left-color: #6366f1;
+        }
+
+        .sidebar-link.active {
+            background-color: #2a3150;
+            color: #ffffff;
+            border-left-color: #6366f1;
+        }
+
+        .sidebar-link i {
+            width: 18px;
+            text-align: center;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .sidebar-link.active i,
+        .sidebar-link:hover i {
+            opacity: 1;
+        }
+
+        .sidebar-divider {
+            border-color: #2a3150;
+            margin: 8px 20px;
+        }
+
+        /* User info block at bottom of sidebar */
+        .sidebar-user {
+            padding: 16px 20px;
+            border-top: 1px solid #2a3150;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: sticky;
+            bottom: 0;
+            background: #1e2235;
+        }
+
+        .sidebar-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
             color: white;
+            flex-shrink: 0;
+            overflow: hidden;
         }
+
+        .sidebar-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .sidebar-user-name {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-user-role {
+            font-size: 0.7rem;
+            color: #6366f1;
+            font-weight: 600;
+        }
+
+        /* ── Main Content ─────────────── */
         .content-area {
-            padding: 30px;
+            padding: 28px 32px;
+            min-height: calc(100vh - 56px);
         }
+
+        /* ── Stat Cards ───────────────── */
         .stat-card {
             border-left: 4px solid;
-            transition: transform 0.2s;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border-top: none;
+            border-right: none;
+            border-bottom: none;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
+
         .stat-card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.10);
         }
-        .stat-card.primary {
-            border-left-color: #0d6efd;
+
+        .stat-card.primary  { border-left-color: #6366f1; }
+        .stat-card.success  { border-left-color: #059669; }
+        .stat-card.warning  { border-left-color: #d97706; }
+        .stat-card.danger   { border-left-color: #dc2626; }
+        .stat-card.info     { border-left-color: #0891b2; }
+
+        /* ── Alerts ───────────────────── */
+        .alert { border-radius: 10px; }
+
+        /* ── Tables ───────────────────── */
+        .table thead th {
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6c757d;
+            background: #f8f9fa;
+            border-top: none;
         }
-        .stat-card.success {
-            border-left-color: #198754;
-        }
-        .stat-card.warning {
-            border-left-color: #ffc107;
-        }
-        .stat-card.danger {
-            border-left-color: #dc3545;
+
+        /* ── Responsive ───────────────── */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: relative;
+                top: 0;
+                height: auto;
+                min-height: unset;
+            }
+            .content-area { padding: 16px; }
         }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{% url 'dashboard' %}">
-                🎓 Smart Attendance
-            </a>
-            
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" 
-                           data-bs-toggle="dropdown">
-                            <i class="fas fa-user-circle"></i> {{ user.get_full_name }}
-                            <span class="badge bg-primary ms-1">{{ user.get_user_type_display }}</span>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{% url 'profile' %}">
-                                <i class="fas fa-user"></i> Profile
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{% url 'logout' %}">
-                                <i class="fas fa-sign-out-alt"></i> Logout
-                            </a></li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-    
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <nav class="col-md-2 d-md-block sidebar">
-                <div class="position-sticky pt-3">
-                    {% block sidebar %}
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'dashboard' %}">
-                                <i class="fas fa-home"></i> Dashboard
+
+<!-- ── Navbar ──────────────────────────────────────────── -->
+<nav class="navbar navbar-expand-lg navbar-dark"
+      style="background: #1e2235; border-bottom: 1px solid #2a3150;
+            position: sticky; top: 0; z-index: 1030;">
+    <div class="container-fluid px-4">
+
+        <a class="navbar-brand text-white" href="{% url 'dashboard' %}">
+            🎓 SmartAttend
+        </a>
+
+        <button class="navbar-toggler border-0" type="button"
+                data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto align-items-center gap-2">
+
+                {% if user.is_authenticated %}
+
+                <!-- Role Badge -->
+                {% if user.user_type == 'student' %}
+    <span class="role-badge"
+          style="background:#059669; color:#ffffff;">
+        <i class="fas fa-graduation-cap me-1"></i>Student
+    </span>
+{% elif user.user_type == 'teacher' %}
+    <span class="role-badge"
+          style="background:#4f46e5; color:#ffffff;">
+        <i class="fas fa-chalkboard-teacher me-1"></i>Teacher
+    </span>
+{% elif user.user_type == 'management' %}
+    <span class="role-badge"
+          style="background:#d97706; color:#ffffff;">
+        <i class="fas fa-user-shield me-1"></i>Management
+    </span>
+{% endif %}
+                </li>
+
+                <!-- User Dropdown -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center gap-2"
+                       href="#" id="userDropdown" role="button"
+                       data-bs-toggle="dropdown">
+                        <div style="width:30px;height:30px;border-radius:50%;
+                                    background:linear-gradient(135deg,#6366f1,#8b5cf6);
+                                    display:flex;align-items:center;justify-content:center;
+                                    font-size:0.75rem;font-weight:700;color:white;overflow:hidden;">
+                            {% if user.profile_pic %}
+                                <img src="{{ user.profile_pic.url }}"
+                                     style="width:100%;height:100%;object-fit:cover;">
+                            {% else %}
+                                {{ user.first_name|first }}{{ user.last_name|first }}
+                            {% endif %}
+                        </div>
+                        <span class="text-white small fw-600">{{ user.first_name }}</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0"
+                        style="border-radius:10px;">
+                        <li>
+                            <div class="px-3 py-2 border-bottom">
+                                <div class="fw-bold text-dark small">
+                                    {{ user.get_full_name }}
+                                </div>
+                                <div class="text-muted" style="font-size:0.75rem;">
+                                    {{ user.email }}
+                                </div>
+                            </div>
+                        </li>
+                        <li>
+                            <a class="dropdown-item py-2" href="{% url 'profile' %}">
+                                <i class="fas fa-user me-2 text-muted"></i>My Profile
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item py-2" href="{% url 'dashboard' %}">
+                                <i class="fas fa-th-large me-2 text-muted"></i>Dashboard
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <li>
+                            <a class="dropdown-item py-2 text-danger" href="{% url 'logout' %}">
+                                <i class="fas fa-sign-out-alt me-2"></i>Logout
                             </a>
                         </li>
                     </ul>
-                    {% endblock %}
-                </div>
-            </nav>
-            
-            <!-- Main Content -->
-            <main class="col-md-10 ms-sm-auto content-area">
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    {% endfor %}
+                </li>
+
                 {% endif %}
-                
-                {% block content %}{% endblock %}
-            </main>
+            </ul>
         </div>
     </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    {% block extra_js %}{% endblock %}
+</nav>
+
+<!-- ── Page Body ────────────────────────────────────────── -->
+<div class="container-fluid p-0">
+    <div class="row g-0">
+
+        <!-- ── Sidebar ─────────────────────────────────── -->
+        {% if user.is_authenticated %}
+        <nav class="col-md-2 sidebar d-none d-md-flex flex-column justify-content-between">
+            <div>
+
+                <!-- ===== STUDENT SIDEBAR ===== -->
+                {% if user.user_type == 'student' %}
+
+                <div class="sidebar-section-label">Main</div>
+
+                <a href="{% url 'attendance:student_dashboard' %}"
+                   class="sidebar-link {% if request.resolver_match.url_name == 'student_dashboard' %}active{% endif %}">
+                    <i class="fas fa-th-large"></i> Dashboard
+                </a>
+
+                <div class="sidebar-section-label">Attendance</div>
+
+                <a href="{% url 'attendance:student_attendance_detail' %}"
+                   class="sidebar-link {% if request.resolver_match.url_name == 'student_attendance_detail' %}active{% endif %}">
+                    <i class="fas fa-calendar-check"></i> My Attendance
+                </a>
+
+                <a href="{% url 'attendance:student_schedule' %}"
+                   class="sidebar-link {% if request.resolver_match.url_name == 'student_schedule' %}active{% endif %}">
+                    <i class="fas fa-calendar-week"></i> My Schedule
+                </a>
+
+                <div class="sidebar-section-label">Account</div>
+
+                <a href="{% url 'profile' %}"
+                   class="sidebar-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
+                    <i class="fas fa-user"></i> My Profile
+                </a>
+                <a href="{% url 'attendance:student_timetable' %}"
+   class="sidebar-link {% if request.resolver_match.url_name == 'student_timetable' %}active{% endif %}">
+    <i class="fas fa-table"></i> My Timetable
+</a>
+
+
+                <!-- ===== TEACHER SIDEBAR ===== -->
+                {% elif user.user_type == 'teacher' %}
+
+                <div class="sidebar-section-label">Main</div>
+
+                <a href="{% url 'attendance:teacher_dashboard' %}"
+                   class="sidebar-link {% if request.resolver_match.url_name == 'teacher_dashboard' %}active{% endif %}">
+                    <i class="fas fa-th-large"></i> Dashboard
+                </a>
+
+                <div class="sidebar-section-label">Sessions</div>
+
+                <!--  -->
+
+                <a href="{% url 'attendance:teacher_sessions_list' %}"
+                   class="sidebar-link {% if request.resolver_match.url_name == 'teacher_sessions_list' %}active{% endif %}">
+                    <i class="fas fa-list-alt"></i> My Sessions
+                </a>
+
+                <div class="sidebar-section-label">Account</div>
+
+                <a href="{% url 'profile' %}"
+                   class="sidebar-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
+                    <i class="fas fa-user"></i> My Profile
+                </a>
+                <a href="{% url 'attendance:teacher_timetable' %}"
+   class="sidebar-link {% if request.resolver_match.url_name == 'teacher_timetable' %}active{% endif %}">
+    <i class="fas fa-table"></i> My Timetable
+</a>    
+
+                <!-- ===== MANAGEMENT SIDEBAR ===== -->
+                {% elif user.user_type == 'management' %}
+
+                <div class="sidebar-section-label">Main</div>
+
+                <a href="{% url 'attendance:management_dashboard' %}"
+                   class="sidebar-link {% if request.resolver_match.url_name == 'management_dashboard' %}active{% endif %}">
+                    <i class="fas fa-th-large"></i> Dashboard
+                </a>
+
+                <div class="sidebar-section-label">Reports</div>
+
+                {% for section in all_sections %}
+                <a href="{% url 'attendance:section_report' section.id %}"
+                   class="sidebar-link {% if request.resolver_match.kwargs.section_id == section.id %}active{% endif %}">
+                    <i class="fas fa-users"></i> {{ section.code }}
+                </a>
+                {% endfor %}
+
+                <div class="sidebar-section-label">Account</div>
+
+                <a href="{% url 'profile' %}"
+                   class="sidebar-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
+                    <i class="fas fa-user"></i> My Profile
+                </a>
+
+                {% endif %}
+
+            </div>
+
+            <!-- Sidebar User Footer -->
+            <div class="sidebar-user">
+                <div class="sidebar-avatar">
+                    {% if user.profile_pic %}
+                        <img src="{{ user.profile_pic.url }}" alt="avatar">
+                    {% else %}
+                        {{ user.first_name|first }}{{ user.last_name|first }}
+                    {% endif %}
+                </div>
+                <div style="min-width:0;">
+                    <div class="sidebar-user-name">{{ user.get_full_name }}</div>
+                    <div class="sidebar-user-role">
+                        {{ user.get_user_type_display }}
+                    </div>
+                </div>
+                <a href="{% url 'attendance:management_timetable' %}"
+   class="sidebar-link {% if request.resolver_match.url_name == 'management_timetable' %}active{% endif %}">
+    <i class="fas fa-calendar-alt"></i> Timetable
+</a>
+            </div>
+        </nav>
+        {% endif %}
+
+        <!-- ── Main Content ─────────────────────────────── -->
+        <main class="{% if user.is_authenticated %}col-md-10{% else %}col-12{% endif %} content-area">
+
+            <!-- Flash messages -->
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-4"
+                     role="alert">
+                    {% if message.tags == 'success' %}
+                        <i class="fas fa-check-circle me-2"></i>
+                    {% elif message.tags == 'danger' %}
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                    {% elif message.tags == 'warning' %}
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                    {% else %}
+                        <i class="fas fa-info-circle me-2"></i>
+                    {% endif %}
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </main>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
 </body>
 </html>
