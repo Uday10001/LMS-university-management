@@ -361,7 +361,16 @@
                 <a href="{% url 'attendance:teacher_timetable' %}"
    class="sidebar-link {% if request.resolver_match.url_name == 'teacher_timetable' %}active{% endif %}">
     <i class="fas fa-table"></i> My Timetable
-</a>    
+</a>
+<a href="{% url 'attendance:schedule_remedial_class' %}"
+   class="sidebar-link {% if request.resolver_match.url_name == 'schedule_remedial_class' %}active{% endif %}">
+    <i class="fas fa-calendar-plus"></i> Schedule Remedial
+</a>
+
+<a href="{% url 'attendance:my_remedial_classes' %}"
+   class="sidebar-link {% if request.resolver_match.url_name == 'my_remedial_classes' %}active{% endif %}">
+    <i class="fas fa-list-alt"></i> My Remedial Classes
+</a>
 
                 <!-- ===== MANAGEMENT SIDEBAR ===== -->
                 {% elif user.user_type == 'management' %}

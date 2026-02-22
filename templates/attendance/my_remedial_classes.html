@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+
+{% block title %}My Remedial Classes{% endblock %}
+
+{% block sidebar %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:teacher_dashboard' %}">
+            <i class="fas fa-home"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:teacher_timetable' %}">
+            <i class="fas fa-calendar-alt"></i> Timetable
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'attendance:my_remedial_classes' %}">
+            <i class="fas fa-stethoscope"></i> Remedial Classes
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'attendance:schedule_remedial_class' %}">
+            <i class="fas fa-plus-circle"></i> Schedule Remedial
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">
+    <i class="fas fa-stethoscope me-2" style="color:#8b5cf6;"></i> My Remedial Classes
+</h1>
+
+<!-- Upcoming Remedial Classes -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+            <i class="fas fa-hourglass-start me-2"></i>Upcoming Remedial Classes ({{ upcoming_remedial|length }})
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if upcoming_remedial %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Subject</th>
+                            <th>Section</th>
+                            <th>Room</th>
+                            <th>Original Session</th>
+                            <th>Reason</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for session in upcoming_remedial %}
+                        <tr>
+                            <td>
+                                <strong>{{ session.date|date:"M d, Y" }}</strong>
+                            </td>
+                            <td>
+                                {{ session.start_time|time:"h:i A" }} — 
+                                {{ session.end_time|time:"h:i A" }}
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ session.subject.code }}</span>
+                            </td>
+                            <td>{{ session.section.code }}</td>
+                            <td>{% if session.room %}{{ session.room }}{% else %}<em class="text-muted">TBD</em>{% endif %}</td>
+                            <td>
+                                {% if session.original_session %}
+                                    <small class="text-muted">
+                                        {{ session.original_session.date|date:"M d, Y" }}
+                                    </small>
+                                {% else %}
+                                    <em class="text-muted">N/A</em>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ session.remedial_reason|truncatewords:5 }}</small>
+                            </td>
+                            <td>
+                                {% if not session.attendance_marked %}
+                                    <a href="{% url 'attendance:mark_attendance' session.id %}" 
+                                       class="btn btn-sm btn-primary" title="Mark Attendance">
+                                        <i class="fas fa-check-circle"></i>
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'attendance:view_session_attendance' session.id %}" 
+                                       class="btn btn-sm btn-info" title="View Attendance">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                {% endif %}
+                                
+                                {% if not session.attendance_marked %}
+                                    <a href="{% url 'attendance:cancel_remedial_class' session.id %}" 
+                                       class="btn btn-sm btn-danger" 
+                                       onclick="return confirm('Cancel this remedial class?');"
+                                       title="Cancel Class">
+                                        <i class="fas fa-times-circle"></i>
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info" role="alert">
+                <i class="fas fa-info-circle me-2"></i>
+                No upcoming remedial classes scheduled.
+                <a href="{% url 'attendance:schedule_remedial_class' %}" class="alert-link">Schedule one now</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Past Remedial Classes -->
+{% if past_remedial %}
+<div class="card mb-4">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">
+            <i class="fas fa-history me-2"></i>Past Remedial Classes ({{ past_remedial|length }})
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Subject</th>
+                        <th>Section</th>
+                        <th>Room</th>
+                        <th>Original Session</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for session in past_remedial %}
+                    <tr class="table-secondary">
+                        <td>
+                            <strong>{{ session.date|date:"M d, Y" }}</strong>
+                        </td>
+                        <td>
+                            {{ session.start_time|time:"h:i A" }} — 
+                            {{ session.end_time|time:"h:i A" }}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ session.subject.code }}</span>
+                        </td>
+                        <td>{{ session.section.code }}</td>
+                        <td>{% if session.room %}{{ session.room }}{% else %}<em class="text-muted">TBD</em>{% endif %}</td>
+                        <td>
+                            {% if session.original_session %}
+                                <small class="text-muted">
+                                    {{ session.original_session.date|date:"M d, Y" }}
+                                </small>
+                            {% else %}
+                                <em class="text-muted">N/A</em>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if session.is_cancelled %}
+                                <span class="badge bg-danger">Cancelled</span>
+                            {% elif session.attendance_marked %}
+                                <span class="badge bg-success">Completed</span>
+                            {% else %}
+                                <span class="badge bg-warning">Not Marked</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if session.attendance_marked %}
+                                <a href="{% url 'attendance:view_session_attendance' session.id %}" 
+                                   class="btn btn-sm btn-info" title="View Attendance">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Quick Actions -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <a href="{% url 'attendance:schedule_remedial_class' %}" class="btn btn-lg btn-primary w-100">
+            <i class="fas fa-plus-circle me-2"></i> Schedule New Remedial Class
+        </a>
+    </div>
+    <div class="col-md-6">
+        <a href="{% url 'attendance:teacher_dashboard' %}" class="btn btn-lg btn-secondary w-100">
+            <i class="fas fa-arrow-left me-2"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+{% endblock %}
+    

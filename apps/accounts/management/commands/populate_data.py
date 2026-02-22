@@ -70,7 +70,7 @@ class Command(BaseCommand):
         for data in sections_data:
             section = Section.objects.create(
                 name=data['name'], code=data['code'],
-                semester=data['semester'], academic_year='2024-25',
+                semester=data['semester'], academic_year='2025-26',
                 capacity=data['capacity']
             )
             sections.append(section)
@@ -264,7 +264,7 @@ class Command(BaseCommand):
         subject_map    = {s.code: s for s in subjects}
         section_map    = {s.code: s for s in Section.objects.all()}
         teacher_map    = {t.employee_id: t for t, _ in teachers}
-        effective_from = date.today() - timedelta(days=30)
+        effective_from = date.today() - timedelta(days=1)
 
         # (section, subject, teacher, day 0=Mon, start, end, room)
         timetable_data = [
