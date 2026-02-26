@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% block title %}Schedule Remedial Class{% endblock %}
+
+{% block extra_css %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+    * { font-family: 'Outfit', sans-serif; }
+    :root {
+        --bg:#f4f6fb; --surface:#fff; --border:#e8edf5;
+        --text:#0f1628; --muted:#7a869a; --accent:#4f46e5;
+        --radius:12px; --shadow:0 2px 12px rgba(0,0,0,0.07);
+    }
+    body { background:var(--bg); }
+
+    .page-header {
+        background:var(--text); color:white;
+        border-radius:var(--radius); padding:22px 28px;
+        margin-bottom:22px;
+    }
+    .page-header h1 { font-size:1.4rem; font-weight:800; margin:0; }
+    .page-header p  { color:rgba(255,255,255,0.5); margin:4px 0 0; font-size:0.85rem; }
+
+    .info-card {
+        background:#eff6ff; border:1px solid #bfdbfe;
+        border-radius:var(--radius); padding:16px 20px;
+        margin-bottom:22px; display:flex; align-items:start; gap:12px;
+    }
+    .info-card i { font-size:1.3rem; color:#1d4ed8; }
+    .info-card-content { flex:1; }
+    .info-card-title { font-weight:700; color:#1e3a8a; font-size:0.88rem; margin-bottom:4px; }
+    .info-card-text { color:#1e40af; font-size:0.82rem; line-height:1.5; }
+
+    .form-card {
+        background:var(--surface); border-radius:var(--radius);
+        border:1px solid var(--border); box-shadow:var(--shadow);
+        padding:28px; max-width:680px;
+    }
+    .form-label {
+        font-size:0.78rem; font-weight:700;
+        text-transform:uppercase; letter-spacing:0.8px;
+        color:var(--muted); margin-bottom:6px; display:block;
+    }
+    .form-control, .form-select {
+        border:1px solid var(--border); border-radius:8px;
+        padding:10px 14px; font-size:0.875rem;
+        background:var(--bg); color:var(--text);
+        width:100%; outline:none; transition:border-color 0.2s;
+        font-family:'Outfit',sans-serif;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color:var(--accent); background:white;
+    }
+    .form-text { font-size:0.72rem; color:var(--muted); margin-top:4px; }
+    .submit-btn {
+        padding:11px 28px; border-radius:10px;
+        background:var(--accent); color:white;
+        font-weight:700; font-size:0.88rem;
+        border:none; cursor:pointer; transition:opacity 0.2s;
+    }
+    .submit-btn:hover { opacity:0.85; }
+
+    /* Recent missed sessions */
+    .missed-card {
+        background:var(--surface); border-radius:var(--radius);
+        border:1px solid var(--border); box-shadow:var(--shadow);
+        max-width:680px; margin-top:24px; overflow:hidden;
+    }
+    .missed-head {
+        padding:13px 20px; border-bottom:1px solid var(--border);
+        font-size:0.72rem; font-weight:700;
+        text-transform:uppercase; letter-spacing:1px; color:var(--muted);
+        background:var(--bg);
+    }
+    .missed-row {
+        padding:13px 20px; border-bottom:1px solid var(--border);
+        display:flex; align-items:center; gap:14px;
+    }
+    .missed-row:last-child { border-bottom:none; }
+    .missed-date {
+        font-family:'JetBrains Mono',monospace;
+        font-size:0.78rem; color:var(--muted); min-width:90px;
+    }
+    .missed-subject { font-weight:600; color:var(--text); font-size:0.85rem; }
+    .missed-section { font-size:0.72rem; color:var(--muted); }
+    .status-pill {
+        padding:3px 10px; border-radius:20px;
+        font-size:0.68rem; font-weight:700;
+        text-transform:uppercase; margin-left:auto;
+    }
+    .pill-cancelled { background:#fee2e2; color:#991b1b; }
+    .pill-unmarked  { background:#fef3c7; color:#b45309; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <h1><i class="fas fa-calendar-plus me-2" style="color:#818cf8;"></i>Schedule Remedial Class</h1>
+    <p>Create a makeup class for any missed or cancelled session — no approval needed</p>
+</div>
+
+<div class="info-card">
+    <i class="fas fa-lightbulb"></i>
+    <div class="info-card-content">
+        <div class="info-card-title">How Remedial Classes Work</div>
+        <div class="info-card-text">
+            • Select a past session that was cancelled or missed<br>
+            • Pick a future date and time for the makeup class<br>
+            • The class is automatically added to students' schedules<br>
+            • You can mark attendance normally when the class happens
+        </div>
+    </div>
+</div>
+
+<div class="form-card">
+    <form method="POST">
+        {% csrf_token %}
+
+        <div class="mb-4">
+            <label class="form-label">{{ form.original_session.label }} *</label>
+            {{ form.original_session }}
+            {% if form.original_session.help_text %}
+            <div class="form-text">{{ form.original_session.help_text }}</div>
+            {% endif %}
+            {% if form.original_session.errors %}
+            <div class="text-danger small mt-1">{{ form.original_session.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <label class="form-label">{{ form.remedial_date.label }} *</label>
+                {{ form.remedial_date }}
+                {% if form.remedial_date.help_text %}
+                <div class="form-text">{{ form.remedial_date.help_text }}</div>
+                {% endif %}
+                {% if form.remedial_date.errors %}
+                <div class="text-danger small mt-1">{{ form.remedial_date.errors.0 }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">{{ form.remedial_start_time.label }} *</label>
+                {{ form.remedial_start_time }}
+                {% if form.remedial_start_time.errors %}
+                <div class="text-danger small mt-1">{{ form.remedial_start_time.errors.0 }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">{{ form.remedial_end_time.label }} *</label>
+                {{ form.remedial_end_time }}
+                {% if form.remedial_end_time.errors %}
+                <div class="text-danger small mt-1">{{ form.remedial_end_time.errors.0 }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">{{ form.room.label }}</label>
+            {{ form.room }}
+            {% if form.room.help_text %}
+            <div class="form-text">{{ form.room.help_text }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">{{ form.reason.label }} *</label>
+            {{ form.reason }}
+        </div>
+
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+            {{ form.non_field_errors.0 }}
+        </div>
+        {% endif %}
+
+        <div style="display:flex; gap:12px; align-items:center;">
+            <button type="submit" class="submit-btn">
+                <i class="fas fa-calendar-plus me-2"></i>Schedule Remedial Class
+            </button>
+            <a href="{% url 'attendance:teacher_dashboard' %}"
+               style="font-size:0.85rem; color:var(--muted);
+                      text-decoration:none; font-weight:600;">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Recent Missed/Cancelled Sessions -->
+{% if recent_missed %}
+<div class="missed-card">
+    <div class="missed-head">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        Recent Missed/Cancelled Sessions (Last 10)
+    </div>
+    {% for session in recent_missed %}
+    <div class="missed-row">
+        <div class="missed-date">{{ session.date|date:"M d, Y" }}</div>
+        <div style="flex:1; min-width:0;">
+            <div class="missed-subject">
+                {{ session.subject.code }} — {{ session.subject.name }}
+            </div>
+            <div class="missed-section">
+                {{ session.section.code }} |
+                {{ session.start_time|time:"h:i A" }}–{{ session.end_time|time:"h:i A" }}
+                {% if session.room %}| {{ session.room }}{% endif %}
+            </div>
+        </div>
+        <span class="status-pill {% if session.is_cancelled %}pill-cancelled{% else %}pill-unmarked{% endif %}">
+            {% if session.is_cancelled %}Cancelled{% else %}Unmarked{% endif %}
+        </span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

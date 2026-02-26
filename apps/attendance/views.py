@@ -6,6 +6,7 @@ from django.db.models import Q, Count, Avg
 from django.utils import timezone
 from datetime import timedelta
 
+from .forms import RemedialClassForm
 from apps.accounts.decorators import teacher_required, student_required, management_required
 from apps.accounts.models import Student, Teacher
 from apps.academic.models import Subject, Section
@@ -16,48 +17,6 @@ from .forms import ClassSessionForm, AttendanceMarkingForm, AttendanceFilterForm
 # ============================================================================
 # TEACHER VIEWS - Attendance Marking
 # ============================================================================
-
-@teacher_required
-def teacher_dashboard(request):
-    """
-    Teacher dashboard showing upcoming sessions and quick stats.
-    """
-    teacher = request.user.teacher_profile
-    
-    # Get today's sessions
-    today_sessions = ClassSession.objects.filter(
-        teacher=teacher,
-        date=timezone.now().date()
-    ).select_related('subject', 'section').order_by('start_time')
-    
-    # Get upcoming sessions (next 7 days)
-    upcoming_sessions = ClassSession.objects.filter(
-        teacher=teacher,
-        date__gt=timezone.now().date(),
-        date__lte=timezone.now().date() + timedelta(days=7)
-    ).select_related('subject', 'section').order_by('date', 'start_time')[:10]
-    
-    # Get recent sessions where attendance is not marked
-    pending_sessions = ClassSession.objects.filter(
-        teacher=teacher,
-        attendance_marked=False,
-        date__lte=timezone.now().date()
-    ).select_related('subject', 'section').order_by('-date')[:5]
-    
-    # Stats
-    total_sessions = ClassSession.objects.filter(teacher=teacher).count()
-    marked_sessions = ClassSession.objects.filter(teacher=teacher, attendance_marked=True).count()
-    
-    context = {
-        'teacher': teacher,
-        'today_sessions': today_sessions,
-        'upcoming_sessions': upcoming_sessions,
-        'pending_sessions': pending_sessions,
-        'total_sessions': total_sessions,
-        'marked_sessions': marked_sessions,
-    }
-    
-    return render(request, 'attendance/teacher_dashboard.html', context)
 
 
 @teacher_required
@@ -94,126 +53,6 @@ def create_session(request):
     }
     
     return render(request, 'attendance/create_session.html', context)
-
-
-@teacher_required
-def mark_attendance(request, session_id):
-    """
-    Mark attendance for a specific class session.
-    """
-    teacher = request.user.teacher_profile
-    session = get_object_or_404(ClassSession, id=session_id, teacher=teacher)
-    
-    # Check if attendance already marked
-    if session.attendance_marked:
-        messages.warning(request, 'Attendance already marked for this session.')
-        return redirect('attendance:view_session_attendance', session_id=session.id)
-    
-    # Get students from this section
-    students = Student.objects.filter(
-        section=session.section,
-        is_active=True
-    ).select_related('user').order_by('roll_number')
-    
-    if request.method == 'POST':
-        form = AttendanceMarkingForm(request.POST, students=students)
-        
-        if form.is_valid():
-            with transaction.atomic():
-                # Create attendance records
-                for student in students:
-                    is_present = form.cleaned_data.get(f'student_{student.id}', False)
-                    remarks = form.cleaned_data.get(f'remarks_{student.id}', '')
-                    
-                    Attendance.objects.create(
-                        class_session=session,
-                        student=student,
-                        is_present=is_present,
-                        remarks=remarks.strip()
-                    )
-                
-                # Mark session as completed
-                session.attendance_marked = True
-                session.save()
-            
-            messages.success(
-                request,
-                f'Attendance marked successfully! {session.get_present_count()}/{session.get_total_students()} students present.'
-            )
-            return redirect('attendance:teacher_dashboard')
-    else:
-        form = AttendanceMarkingForm(students=students)
-    
-    context = {
-        'form': form,
-        'session': session,
-        'students': students,
-        'total_students': students.count(),
-    }
-    
-    return render(request, 'attendance/mark_attendance.html', context)
-
-
-@teacher_required
-def view_session_attendance(request, session_id):
-    """
-    View attendance for a specific session (read-only).
-    """
-    teacher = request.user.teacher_profile
-    session = get_object_or_404(ClassSession, id=session_id, teacher=teacher)
-    
-    attendance_records = Attendance.objects.filter(
-        class_session=session
-    ).select_related('student', 'student__user').order_by('student__roll_number')
-    
-    context = {
-        'session': session,
-        'attendance_records': attendance_records,
-        'present_count': session.get_present_count(),
-        'absent_count': session.get_absent_count(),
-        'total_students': session.get_total_students(),
-        'attendance_percentage': session.get_attendance_percentage(),
-    }
-    
-    return render(request, 'attendance/view_session_attendance.html', context)
-
-
-@teacher_required
-def teacher_sessions_list(request):
-    """
-    List all sessions created by the teacher with filters.
-    """
-    teacher = request.user.teacher_profile
-    
-    sessions = ClassSession.objects.filter(
-        teacher=teacher
-    ).select_related('subject', 'section').order_by('-date', '-start_time')
-    
-    # Apply filters
-    filter_form = AttendanceFilterForm(request.GET)
-    
-    if filter_form.is_valid():
-        subject = filter_form.cleaned_data.get('subject')
-        section = filter_form.cleaned_data.get('section')
-        date_from = filter_form.cleaned_data.get('date_from')
-        date_to = filter_form.cleaned_data.get('date_to')
-        
-        if subject:
-            sessions = sessions.filter(subject=subject)
-        if section:
-            sessions = sessions.filter(section=section)
-        if date_from:
-            sessions = sessions.filter(date__gte=date_from)
-        if date_to:
-            sessions = sessions.filter(date__lte=date_to)
-    
-    context = {
-        'sessions': sessions,
-        'filter_form': filter_form,
-        'teacher': teacher,
-    }
-    
-    return render(request, 'attendance/teacher_sessions_list.html', context)
 
 
 # ============================================================================
@@ -281,47 +120,6 @@ def student_dashboard(request):
     }
     
     return render(request, 'attendance/student_dashboard.html', context)
-
-
-@student_required
-def student_attendance_detail(request):
-    """
-    Detailed view of student's attendance with filters.
-    """
-    student = request.user.student_profile
-    
-    attendance_records = Attendance.objects.filter(
-        student=student
-    ).select_related(
-        'class_session',
-        'class_session__subject',
-        'class_session__section',
-        'class_session__teacher',
-        'class_session__teacher__user'
-    ).order_by('-class_session__date')
-    
-    # Apply filters
-    filter_form = AttendanceFilterForm(request.GET)
-    
-    if filter_form.is_valid():
-        subject = filter_form.cleaned_data.get('subject')
-        date_from = filter_form.cleaned_data.get('date_from')
-        date_to = filter_form.cleaned_data.get('date_to')
-        
-        if subject:
-            attendance_records = attendance_records.filter(class_session__subject=subject)
-        if date_from:
-            attendance_records = attendance_records.filter(class_session__date__gte=date_from)
-        if date_to:
-            attendance_records = attendance_records.filter(class_session__date__lte=date_to)
-    
-    context = {
-        'student': student,
-        'attendance_records': attendance_records,
-        'filter_form': filter_form,
-    }
-    
-    return render(request, 'attendance/student_attendance_detail.html', context)
 
 
 # ============================================================================
@@ -753,104 +551,6 @@ from apps.academic.models import TimetableSlot
 from django.db import models as django_models
 
 
-# ── MANAGEMENT: Full timetable overview ──────────────────────
-
-@management_required
-def management_timetable(request):
-    """
-    Management sees the full timetable for all sections.
-    Can filter by section.
-    """
-    sections = Section.objects.all().order_by('semester', 'code')
-    selected_section_id = request.GET.get('section')
-    selected_section = None
-
-    slots = TimetableSlot.objects.filter(
-        is_active=True
-    ).select_related(
-        'subject', 'section', 'teacher', 'teacher__user'
-    ).order_by('day_of_week', 'start_time')
-
-    if selected_section_id:
-        slots = slots.filter(section__id=selected_section_id)
-        selected_section = Section.objects.filter(
-            id=selected_section_id
-        ).first()
-
-    # Group by day
-    days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
-    timetable_by_day = {day: [] for day in days}
-
-    for slot in slots:
-        day_name = slot.get_day_of_week_display()
-        timetable_by_day[day_name].append(slot)
-
-    context = {
-        'sections': sections,
-        'selected_section': selected_section,
-        'timetable_by_day': timetable_by_day,
-        'days': days,
-    }
-    return render(request, 'attendance/management_timetable.html', context)
-
-
-# ── TEACHER: Personal timetable + today's sessions ───────────
-
-@teacher_required
-def teacher_timetable(request):
-    """
-    Teacher sees their own weekly timetable and today's sessions.
-    """
-    teacher = request.user.teacher_profile
-    today   = timezone.now().date()
-    today_weekday = today.weekday()
-
-    # Weekly timetable slots for this teacher
-    slots = TimetableSlot.objects.filter(
-        teacher=teacher,
-        is_active=True
-    ).select_related(
-        'subject', 'section'
-    ).order_by('day_of_week', 'start_time')
-
-    days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
-    timetable_by_day = {day: [] for day in days}
-    for slot in slots:
-        timetable_by_day[slot.get_day_of_week_display()].append(slot)
-
-    # Today's actual sessions (generated ClassSessions)
-    today_sessions = ClassSession.objects.filter(
-        teacher=teacher,
-        date=today
-    ).select_related('subject', 'section').order_by('start_time')
-
-    # Tag each with attendance status
-    today_sessions_data = []
-    for session in today_sessions:
-        today_sessions_data.append({
-            'session': session,
-            'can_mark': not session.attendance_marked and not session.is_cancelled,
-        })
-
-    # Upcoming week (next 5 working days)
-    upcoming_sessions = ClassSession.objects.filter(
-        teacher=teacher,
-        date__gt=today,
-        date__lte=today + timezone.timedelta(days=7)
-    ).select_related('subject', 'section').order_by('date', 'start_time')
-
-    context = {
-        'teacher': teacher,
-        'timetable_by_day': timetable_by_day,
-        'days': days,
-        'today': today,
-        'today_weekday': today_weekday,
-        'today_sessions_data': today_sessions_data,
-        'upcoming_sessions': upcoming_sessions,
-    }
-    return render(request, 'attendance/teacher_timetable.html', context)
-
-
 # ── STUDENT: Personal timetable (read-only) ──────────────────
 
 @student_required
@@ -908,34 +608,36 @@ from .forms import AttendanceMarkingForm, AttendanceFilterForm
 # SHARED HELPER
 # ─────────────────────────────────────────────────────────────
 
+from django.db.models import Q
+
 def _ensure_sessions_exist(teacher, days_back=30):
     """
-    Lazily generate ClassSessions for the past N days
-    so teachers can always find unmarked past sessions.
+    Lazily generate ClassSessions for the past N days and today
+    so teachers can always find unmarked sessions.
     Called on teacher dashboard load.
     """
-    today     = timezone.now().date()
-    start     = today - timedelta(days=days_back)
+    today = timezone.now().date()
+    start = today - timedelta(days=days_back)
 
     for offset in range(days_back + 1):
-        target   = start + timedelta(days=offset)
-        weekday  = target.weekday()
-        if weekday == 6:        # skip Sunday
+        target = start + timedelta(days=offset)
+        weekday = target.weekday()  # 0=Monday, 6=Sunday
+        
+        # Skip Sundays (not in DAY_CHOICES)
+        if weekday == 6:
             continue
 
+        # Get all active slots for this teacher on this day of week
         slots = TimetableSlot.objects.filter(
             teacher=teacher,
             day_of_week=weekday,
             is_active=True,
             effective_from__lte=target,
         ).filter(
-            __import__('django.db.models', fromlist=['Q']).Q(
-                effective_to__isnull=True
-            ) | __import__('django.db.models', fromlist=['Q']).Q(
-                effective_to__gte=target
-            )
+            Q(effective_to__isnull=True) | Q(effective_to__gte=target)
         )
 
+        # Create session for each slot
         for slot in slots:
             ClassSession.objects.get_or_create(
                 date=target,
@@ -944,22 +646,23 @@ def _ensure_sessions_exist(teacher, days_back=30):
                 start_time=slot.start_time,
                 defaults={
                     'timetable_slot': slot,
-                    'teacher':        slot.teacher,
-                    'end_time':       slot.end_time,
-                    'room':           slot.room,
+                    'teacher': slot.teacher,
+                    'end_time': slot.end_time,
+                    'room': slot.room,
                 }
             )
 
 
 def _ensure_sessions_for_section(section, days_back=30):
     """Same as above but for a whole section (used by student views)."""
-    from django.db.models import Q
     today = timezone.now().date()
     start = today - timedelta(days=days_back)
 
     for offset in range(days_back + 1):
-        target  = start + timedelta(days=offset)
-        weekday = target.weekday()
+        target = start + timedelta(days=offset)
+        weekday = target.weekday()  # 0=Monday, 6=Sunday
+        
+        # Skip Sundays
         if weekday == 6:
             continue
 
@@ -980,9 +683,9 @@ def _ensure_sessions_for_section(section, days_back=30):
                 start_time=slot.start_time,
                 defaults={
                     'timetable_slot': slot,
-                    'teacher':        slot.teacher,
-                    'end_time':       slot.end_time,
-                    'room':           slot.room,
+                    'teacher': slot.teacher,
+                    'end_time': slot.end_time,
+                    'room': slot.room,
                 }
             )
 
@@ -1010,13 +713,13 @@ def teacher_dashboard(request):
         is_cancelled=False
     ).select_related('subject', 'section').order_by('start_time')
 
-    # ALL past unmarked sessions (the key behaviour change)
+    # Today's unmarked sessions only
     pending_sessions = ClassSession.objects.filter(
         teacher=teacher,
         attendance_marked=False,
         is_cancelled=False,
-        date__lte=today
-    ).select_related('subject', 'section').order_by('-date', 'start_time')
+        date=today
+    ).select_related('subject', 'section').order_by('start_time')
 
     # Stats
     total_sessions  = ClassSession.objects.filter(teacher=teacher).count()
@@ -1240,7 +943,7 @@ def teacher_sessions_list(request):
         teacher=teacher
     ).select_related('subject', 'section').order_by('-date', '-start_time')
 
-    filter_form = AttendanceFilterForm(request.GET)
+    filter_form = AttendanceFilterForm(teacher=teacher, data=request.GET or None)
     if filter_form.is_valid():
         if filter_form.cleaned_data.get('subject'):
             sessions = sessions.filter(
@@ -1409,3 +1112,122 @@ def management_dashboard(request):
         'pending_requests':  pending_requests,
     }
     return render(request, 'attendance/management_dashboard.html', context)
+
+from django.db import models as django_models
+
+
+
+
+@teacher_required
+def schedule_remedial_class(request):
+    """
+    Teacher schedules a remedial/makeup class for a missed session.
+    Auto-generates a new ClassSession marked as remedial.
+    No management approval needed.
+    """
+    teacher = request.user.teacher_profile
+
+    if request.method == 'POST':
+        form = RemedialClassForm(teacher, request.POST)
+        
+        if form.is_valid():
+            original    = form.cleaned_data['original_session']
+            date_       = form.cleaned_data['remedial_date']
+            start       = form.cleaned_data['remedial_start_time']
+            end         = form.cleaned_data['remedial_end_time']
+            room        = form.cleaned_data.get('room', '')
+            reason      = form.cleaned_data['reason']
+
+            # Create the remedial session
+            remedial_session = ClassSession.objects.create(
+                timetable_slot=None,  # not from timetable
+                subject=original.subject,
+                section=original.section,
+                teacher=teacher,
+                date=date_,
+                start_time=start,
+                end_time=end,
+                room=room or original.room,
+                is_remedial=True,
+                original_session=original,
+                remedial_reason=reason,
+            )
+
+            messages.success(
+                request,
+                f'✅ Remedial class scheduled for {date_.strftime("%b %d, %Y")} '
+                f'at {start.strftime("%I:%M %p")}!'
+            )
+            return redirect('attendance:teacher_dashboard')
+    else:
+        form = RemedialClassForm(teacher)
+
+    # Show teacher's recent cancelled/missed sessions for context
+    recent_missed = ClassSession.objects.filter(
+        teacher=teacher,
+        date__lt=timezone.now().date(),
+    ).filter(
+        django_models.Q(is_cancelled=True) | 
+        django_models.Q(attendance_marked=False)
+    ).select_related('subject', 'section').order_by('-date')[:10]
+
+    context = {
+        'form': form,
+        'recent_missed': recent_missed,
+        'teacher': teacher,
+    }
+    return render(request, 'attendance/schedule_remedial_class.html', context)
+
+
+@teacher_required
+def my_remedial_classes(request):
+    """
+    List all remedial classes scheduled by this teacher.
+    """
+    teacher = request.user.teacher_profile
+
+    remedial_sessions = ClassSession.objects.filter(
+        teacher=teacher,
+        is_remedial=True
+    ).select_related(
+        'subject', 'section', 'original_session'
+    ).order_by('-date', '-start_time')
+
+    # Separate upcoming vs past
+    today = timezone.now().date()
+    upcoming = [s for s in remedial_sessions if s.date >= today]
+    past     = [s for s in remedial_sessions if s.date < today]
+
+    context = {
+        'teacher': teacher,
+        'upcoming_remedial': upcoming,
+        'past_remedial': past,
+    }
+    return render(request, 'attendance/my_remedial_classes.html', context)
+
+
+@teacher_required
+def cancel_remedial_class(request, session_id):
+    """
+    Teacher can cancel a remedial class they scheduled.
+    """
+    teacher = request.user.teacher_profile
+    session = get_object_or_404(
+        ClassSession,
+        id=session_id,
+        teacher=teacher,
+        is_remedial=True
+    )
+
+    if session.attendance_marked:
+        messages.error(
+            request,
+            'Cannot cancel — attendance already marked.'
+        )
+    else:
+        session.is_cancelled = True
+        session.cancellation_note = 'Cancelled by teacher'
+        session.save()
+        messages.success(request, 'Remedial class cancelled.')
+
+    return redirect('attendance:my_remedial_classes')

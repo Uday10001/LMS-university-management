@@ -5,9 +5,12 @@ app_name = 'attendance'
 
 urlpatterns = [
     # ── Teacher ───────────────────────────────────────────────
-    path('teacher/dashboard/',
+path('teacher/dashboard/',
          views.teacher_dashboard,
          name='teacher_dashboard'),
+path('teacher/create_session/',
+         views.create_session,
+         name='create_session'),
 
     path('teacher/timetable/',
          views.teacher_timetable,
@@ -16,6 +19,19 @@ urlpatterns = [
     path('teacher/request-change/',
          views.request_timetable_change,
          name='request_timetable_change'),
+
+    # ✅ NEW: Remedial class routes
+    path('teacher/schedule-remedial/',
+         views.schedule_remedial_class,
+         name='schedule_remedial_class'),
+
+    path('teacher/my-remedial-classes/',
+         views.my_remedial_classes,
+         name='my_remedial_classes'),
+
+    path('teacher/cancel-remedial/<int:session_id>/',
+         views.cancel_remedial_class,
+         name='cancel_remedial_class'),
 
     path('teacher/mark/<int:session_id>/',
          views.mark_attendance,

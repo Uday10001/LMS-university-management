@@ -162,6 +162,12 @@
                   border:1px solid rgba(255,255,255,0.2);">
             <i class="fas fa-table me-1"></i>My Timetable
         </a>
+        <a href="{% url 'attendance:schedule_remedial_class' %}"
+   style="padding:9px 18px; border-radius:10px; background:rgba(255,255,255,0.1);
+          color:white; font-weight:600; font-size:0.82rem; text-decoration:none;
+          border:1px solid rgba(255,255,255,0.2);">
+    <i class="fas fa-calendar-plus me-1"></i>Schedule Remedial
+</a>
         <a href="{% url 'attendance:request_timetable_change' %}"
            style="padding:9px 18px; border-radius:10px; background:rgba(255,255,255,0.1);
                   color:white; font-weight:600; font-size:0.82rem; text-decoration:none;
@@ -238,7 +244,7 @@
 
     {% if pending_sessions %}
         {% for session in pending_sessions %}
-        {% with is_today=session.date|date:"Y-m-d" == today|date:"Y-m-d" %}
+        {% if session.date|date:"Y-m-d" == today|date:"Y-m-d" %}
         <div class="session-row">
             <div class="session-date-block
                 {% if is_today %}today
@@ -272,7 +278,7 @@
                 {% if is_today %}Mark{% else %}Mark Late{% endif %}
             </a>
         </div>
-        {% endwith %}
+        {% endif %}
         {% endfor %}
     {% else %}
         <div class="empty-state">
